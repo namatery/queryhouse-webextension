@@ -1,0 +1,34 @@
+{
+  "name": "queryhouse",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wxt",
+    "build": "wxt build",
+    "typecheck": "wxt prepare && tsc --noEmit",
+    "test": "wxt prepare && vitest run",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "@clickhouse/parser": "0.2.1",
+    "@wxt-dev/module-react": "1.1.3",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "wxt": "0.20.27"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.30.1",
+    "@testing-library/dom": "10.4.0",
+    "@types/node": "24.0.10",
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.6",
+    "eslint": "9.30.1",
+    "eslint-plugin-react-hooks": "5.2.0",
+    "globals": "16.3.0",
+    "jsdom": "26.1.0",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.35.1",
+    "vitest": "3.2.4"
+  }
+}
