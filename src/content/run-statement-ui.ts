@@ -1,61 +1,68 @@
 const STYLE_ID = 'queryhouse-run-statement-style';
 
+export type RunStatementAction = {
+  id: string;
+  anchor: DOMRect;
+  onRun: () => void;
+};
+
 export type RunStatementController = {
-  show(anchor: DOMRect, onRun: () => void): void;
+  setActions(actions: RunStatementAction[]): void;
   hide(): void;
   destroy(): void;
 };
 
 export function createRunStatementController(ownerDocument: Document): RunStatementController {
   ensureStyles(ownerDocument);
-  const button = ownerDocument.createElement('button');
-  button.type = 'button';
-  button.className = 'queryhouse-run-statement';
-  button.textContent = 'Run';
-  button.hidden = true;
-  ownerDocument.body.append(button);
+  const buttons: HTMLButtonElement[] = [];
 
-  let run: (() => void) | null = null;
-  button.addEventListener('mousedown', (event) => event.preventDefault());
-  button.addEventListener('click', (event) => {
-    event.preventDefault();
-    event.stopPropagation();
-    run?.();
-  });
+  function clear() {
+    buttons.splice(0).forEach((button) => button.remove());
+  }
 
   return {
-    show(anchor, onRun) {
-      run = onRun;
-      button.hidden = false;
-      button.style.visibility = 'hidden';
-      positionButton(button, anchor);
-      button.style.visibility = '';
+    setActions(actions) {
+      clear();
+      actions.forEach((action) => {
+        const button = ownerDocument.createElement('button');
+        button.type = 'button';
+        button.className = 'queryhouse-run-statement';
+        button.dataset.queryhouseStatementId = action.id;
+        button.innerHTML = '<span class="queryhouse-run-statement-icon" aria-hidden="true"></span><span>Run</span>';
+        button.addEventListener('mousedown', (event) => event.preventDefault());
+        button.addEventListener('click', (event) => {
+          event.preventDefault();
+          event.stopPropagation();
+          action.onRun();
+        });
+        ownerDocument.body.append(button);
+        button.style.visibility = 'hidden';
+        positionButton(button, action.anchor);
+        button.style.visibility = '';
+        buttons.push(button);
+      });
     },
     hide() {
-      button.hidden = true;
-      run = null;
+      clear();
     },
     destroy() {
-      button.remove();
+      clear();
     }
   };
 }
 
 function positionButton(button: HTMLElement, anchor: DOMRect) {
   const margin = 8;
-  const gap = 6;
+  const gap = 4;
   const rect = button.getBoundingClientRect();
-  let left = anchor.right + gap;
-  let top = anchor.top - 2;
+  let left = anchor.left;
+  let top = anchor.top - rect.height - gap;
 
   if (left + rect.width > window.innerWidth - margin) {
-    left = anchor.left - rect.width - gap;
+    left = window.innerWidth - margin - rect.width;
   }
   if (left < margin) {
     left = margin;
-  }
-  if (top + rect.height > window.innerHeight - margin) {
-    top = window.innerHeight - margin - rect.height;
   }
   if (top < margin) {
     top = margin;
@@ -76,21 +83,31 @@ function ensureStyles(ownerDocument: Document) {
     .queryhouse-run-statement {
       position: fixed;
       z-index: 2147483647;
-      min-width: 44px;
-      height: 24px;
-      border: 1px solid #1a73e8;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      height: 20px;
+      border: 0;
       border-radius: 4px;
-      padding: 0 10px;
-      color: #ffffff;
-      background: #1a73e8;
-      box-shadow: 0 4px 12px rgba(26, 115, 232, 0.24);
+      padding: 0 4px;
+      color: #1a73e8;
+      background: transparent;
+      box-shadow: none;
       font: 12px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       cursor: pointer;
     }
 
     .queryhouse-run-statement:hover {
-      background: #1558b0;
-      border-color: #1558b0;
+      color: #1558b0;
+      text-decoration: underline;
+    }
+
+    .queryhouse-run-statement-icon {
+      width: 0;
+      height: 0;
+      border-top: 4px solid transparent;
+      border-bottom: 4px solid transparent;
+      border-left: 7px solid currentColor;
     }
   `;
   ownerDocument.head.append(style);

@@ -45,7 +45,7 @@ describe('createQueryHouse autocomplete key handling', () => {
     queryHouse.destroy();
   });
 
-  it('runs only the current completed statement through the host run button', async () => {
+  it('runs a completed statement without focusing that statement first', async () => {
     const form = document.createElement('form');
     const textarea = document.createElement('textarea');
     const hostRun = document.createElement('button');
@@ -55,7 +55,7 @@ describe('createQueryHouse autocomplete key handling', () => {
     textarea.placeholder = 'SQL query';
     textarea.rows = 8;
     textarea.value = originalSql;
-    textarea.setSelectionRange(originalSql.indexOf('2'), originalSql.indexOf('2'));
+    textarea.setSelectionRange(0, 0);
     hostRun.type = 'button';
     hostRun.textContent = 'Run';
     hostRun.addEventListener('click', () => {
@@ -73,10 +73,11 @@ describe('createQueryHouse autocomplete key handling', () => {
     });
     queryHouse.mount();
 
-    const queryHouseRun = document.querySelector<HTMLButtonElement>('.queryhouse-run-statement');
-    queryHouseRun?.click();
+    const queryHouseRuns = document.querySelectorAll<HTMLButtonElement>('.queryhouse-run-statement');
+    queryHouseRuns[1]?.click();
     await new Promise((resolve) => window.setTimeout(resolve, 0));
 
+    expect(queryHouseRuns).toHaveLength(2);
     expect(submittedSql).toBe('SELECT 2;');
     expect(textarea.value).toBe(originalSql);
 

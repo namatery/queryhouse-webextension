@@ -5,7 +5,7 @@ import { createRunStatementController } from './run-statement-ui';
 import { getCompletions } from '../sql/completions';
 import { runLocalDiagnostics } from '../sql/diagnostics';
 import { runParserValidation } from '../sql/parser-validator';
-import { findCurrentStatement, getExecutableStatementText } from '../sql/statements';
+import { findCurrentStatement, getExecutableStatementText, splitSqlStatements } from '../sql/statements';
 
 const VALIDATION_DELAY_MS = 250;
 
@@ -40,6 +40,7 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
 
     const refresh = () => {
       refreshHighlight();
+      refreshRunStatementActions();
       refreshAutocomplete();
       scheduleValidation();
     };
@@ -53,33 +54,44 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
 
   function refreshHighlight() {
     if (!adapter || !flags.highlightCurrentQuery) {
+      return;
+    }
+
+    adapter.setCurrentQueryRange(findCurrentStatement(adapter.getText(), adapter.getCursor()));
+  }
+
+  function refreshRunStatementActions() {
+    if (!adapter || !flags.runCompletedStatement) {
       runStatement.hide();
       return;
     }
 
     const sql = adapter.getText();
-    const statement = findCurrentStatement(sql, adapter.getCursor());
-    adapter.setCurrentQueryRange(statement);
-    refreshRunStatementAction(sql, statement);
-  }
-
-  function refreshRunStatementAction(sql: string, statement: ReturnType<typeof findCurrentStatement>) {
-    if (!adapter || !flags.runCompletedStatement || !statement) {
-      runStatement.hide();
-      return;
-    }
-
-    const executableSql = getExecutableStatementText(sql, statement);
-    if (!executableSql) {
-      runStatement.hide();
-      return;
-    }
-
-    runStatement.show(adapter.getTextOffsetRect(statement.end), () => {
-      if (!adapter?.runStatement(executableSql)) {
-        adapter?.setDiagnostics(['QueryHouse could not find the ClickHouse Run button for this editor.']);
+    const actions = splitSqlStatements(sql).flatMap((statement) => {
+      const executableSql = getExecutableStatementText(sql, statement);
+      if (!executableSql) {
+        return [];
       }
+
+      return [
+        {
+          id: `${statement.start}:${statement.end}`,
+          anchor: adapter?.getTextOffsetRect(statement.start) ?? new DOMRect(),
+          onRun: () => {
+            if (!adapter?.runStatement(executableSql)) {
+              adapter?.setDiagnostics(['QueryHouse could not find the ClickHouse Run button for this editor.']);
+            }
+          }
+        }
+      ];
     });
+
+    if (actions.length === 0) {
+      runStatement.hide();
+      return;
+    }
+
+    runStatement.setActions(actions);
   }
 
   function refreshAutocomplete() {
