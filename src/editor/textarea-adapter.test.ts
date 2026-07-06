@@ -35,6 +35,23 @@ describe('TextareaAdapter line numbers', () => {
     adapter.destroy();
   });
 
+  it('reserves exactly one editor line above SQL for statement actions', () => {
+    const textarea = document.createElement('textarea');
+    textarea.style.paddingTop = '4px';
+    textarea.style.lineHeight = '19px';
+    textarea.value = 'SELECT 1;';
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    const lineNumbers = document.querySelector<HTMLElement>('.queryhouse-line-numbers');
+
+    expect(textarea.style.paddingTop).toBe('23px');
+    expect(lineNumbers?.style.paddingTop).toBe('4px');
+    expect(lineNumbers?.style.lineHeight).toBe('19px');
+
+    adapter.destroy();
+  });
+
   it('removes line numbers and restores padding on destroy', () => {
     const textarea = document.createElement('textarea');
     textarea.style.paddingLeft = '12px';

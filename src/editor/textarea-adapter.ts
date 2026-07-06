@@ -1,7 +1,7 @@
 import type { EditorAdapter, TextRange } from './types';
 
 const STYLE_ID = 'queryhouse-editor-style';
-const RUN_ACTION_ROW_HEIGHT = 22;
+const DEFAULT_LINE_HEIGHT_MULTIPLIER = 1.2;
 const SQL_KEYWORDS = new Set([
   'ADD',
   'ALTER',
@@ -307,10 +307,12 @@ export class TextareaAdapter implements EditorAdapter {
 
   private renderLineNumbers() {
     const lineCount = Math.max(1, this.element.value.split('\n').length);
-    this.updateEditorPadding(lineCount);
+    const style = window.getComputedStyle(this.element);
+    const lineHeightPx = getEditorLineHeightPx(style);
+    this.updateEditorPadding(lineCount, lineHeightPx);
 
     const rect = this.element.getBoundingClientRect();
-    const style = window.getComputedStyle(this.element);
+    const updatedStyle = window.getComputedStyle(this.element);
     const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
     const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
     const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
@@ -323,9 +325,9 @@ export class TextareaAdapter implements EditorAdapter {
       height: `${Math.max(0, rect.height - borderTop - borderBottom)}px`,
       paddingTop: `${this.basePaddingTopPx}px`,
       paddingRight: '8px',
-      font: style.font,
-      lineHeight: style.lineHeight,
-      letterSpacing: style.letterSpacing
+      font: updatedStyle.font,
+      lineHeight: `${lineHeightPx}px`,
+      letterSpacing: updatedStyle.letterSpacing
     });
 
     if (this.lineNumbers.textContent !== numbers) {
@@ -334,9 +336,9 @@ export class TextareaAdapter implements EditorAdapter {
     this.lineNumbers.scrollTop = this.element.scrollTop;
   }
 
-  private updateEditorPadding(lineCount: number) {
+  private updateEditorPadding(lineCount: number, lineHeightPx: number) {
     const width = Math.max(36, String(lineCount + 1).length * 8 + 22);
-    const paddingTop = `${this.basePaddingTopPx + RUN_ACTION_ROW_HEIGHT}px`;
+    const paddingTop = `${this.basePaddingTopPx + lineHeightPx}px`;
     if (width === this.lineNumberWidth && this.element.style.paddingTop === paddingTop) {
       return;
     }
@@ -546,6 +548,20 @@ function getLineCommentEditColumn(originalLine: string, updatedLine: string) {
     column += 1;
   }
   return column;
+}
+
+function getEditorLineHeightPx(style: CSSStyleDeclaration) {
+  const lineHeight = Number.parseFloat(style.lineHeight);
+  if (Number.isFinite(lineHeight) && lineHeight > 0) {
+    return lineHeight;
+  }
+
+  const fontSize = Number.parseFloat(style.fontSize);
+  if (Number.isFinite(fontSize) && fontSize > 0) {
+    return fontSize * DEFAULT_LINE_HEIGHT_MULTIPLIER;
+  }
+
+  return 16 * DEFAULT_LINE_HEIGHT_MULTIPLIER;
 }
 
 function highlightSqlKeywords(value: string) {
