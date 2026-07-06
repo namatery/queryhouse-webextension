@@ -83,4 +83,43 @@ describe('createQueryHouse autocomplete key handling', () => {
 
     queryHouse.destroy();
   });
+
+  it('comments selected lines on Ctrl+/', () => {
+    const textarea = document.createElement('textarea');
+    textarea.placeholder = 'SQL query';
+    textarea.rows = 8;
+    textarea.value = 'SELECT 1;\nSELECT 2;';
+    textarea.setSelectionRange(0, textarea.value.length);
+    document.body.append(textarea);
+
+    let hostShortcutCalled = false;
+    textarea.addEventListener('keydown', (event) => {
+      if (event.ctrlKey && event.key === '/') {
+        hostShortcutCalled = true;
+      }
+    });
+
+    const queryHouse = createQueryHouse(document, {
+      highlightCurrentQuery: true,
+      autocomplete: false,
+      localChecks: false,
+      parserValidation: false,
+      runCompletedStatement: false
+    });
+    queryHouse.mount();
+
+    const event = new KeyboardEvent('keydown', {
+      key: '/',
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true
+    });
+    textarea.dispatchEvent(event);
+
+    expect(textarea.value).toBe('-- SELECT 1;\n-- SELECT 2;');
+    expect(event.defaultPrevented).toBe(true);
+    expect(hostShortcutCalled).toBe(false);
+
+    queryHouse.destroy();
+  });
 });

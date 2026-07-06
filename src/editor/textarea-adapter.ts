@@ -219,6 +219,27 @@ export class TextareaAdapter implements EditorAdapter {
     return this.getTextOffsetRectInternal(offset);
   }
 
+  toggleLineComment() {
+    const value = this.element.value;
+    const selection = this.getSelection();
+    const range = getSelectedLineRange(value, selection);
+    const originalBlock = value.slice(range.start, range.end);
+    const lines = originalBlock.split('\n');
+    const nonEmptyLines = lines.filter((line) => line.trim().length > 0);
+    const shouldUncomment = nonEmptyLines.length > 0 && nonEmptyLines.every((line) => /^\s*-- ?/.test(line));
+    const updatedLines = lines.map((line) => (shouldUncomment ? line.replace(/^(\s*)-- ?/, '$1') : line.replace(/^(\s*)/, '$1-- ')));
+    const updatedBlock = updatedLines.join('\n');
+    const nextValue = `${value.slice(0, range.start)}${updatedBlock}${value.slice(range.end)}`;
+    const nextSelection = {
+      start: mapLineCommentOffset(selection.start, range, lines, updatedLines),
+      end: mapLineCommentOffset(selection.end, range, lines, updatedLines)
+    };
+
+    this.setValueForHost(nextValue);
+    this.element.setSelectionRange(nextSelection.start, nextSelection.end);
+    this.renderEditorOverlays();
+  }
+
   runStatement(sql: string) {
     const runButton = findHostRunButton(this.element);
     if (!runButton) {
@@ -469,6 +490,58 @@ function scoreRunCandidate(candidate: HTMLButtonElement | HTMLInputElement) {
   if (candidate.type === 'submit') score += 1;
   if (candidate.getAttribute('aria-label')) score += 1;
   return score;
+}
+
+function getSelectedLineRange(value: string, selection: TextRange): TextRange {
+  const start = Math.min(selection.start, selection.end);
+  const end = Math.max(selection.start, selection.end);
+  const lineStart = value.lastIndexOf('\n', Math.max(0, start - 1)) + 1;
+  const endForLine = end > start && value[end - 1] === '\n' ? end - 1 : end;
+  const nextBreak = value.indexOf('\n', endForLine);
+  const lineEnd = nextBreak === -1 ? value.length : nextBreak;
+
+  return { start: lineStart, end: lineEnd };
+}
+
+function mapLineCommentOffset(offset: number, range: TextRange, originalLines: string[], updatedLines: string[]) {
+  if (offset <= range.start) {
+    return offset;
+  }
+
+  const totalDelta = updatedLines.join('\n').length - originalLines.join('\n').length;
+  if (offset >= range.end) {
+    return offset + totalDelta;
+  }
+
+  let originalLineStart = range.start;
+  let updatedLineStart = range.start;
+  for (let index = 0; index < originalLines.length; index += 1) {
+    const originalLine = originalLines[index] ?? '';
+    const updatedLine = updatedLines[index] ?? '';
+    const originalLineEnd = originalLineStart + originalLine.length;
+    if (offset <= originalLineEnd) {
+      const column = offset - originalLineStart;
+      const editColumn = getLineCommentEditColumn(originalLine, updatedLine);
+      const lineDelta = updatedLine.length - originalLine.length;
+      if (lineDelta < 0 && column > editColumn && column <= editColumn - lineDelta) {
+        return updatedLineStart + editColumn;
+      }
+      return updatedLineStart + column + (column >= editColumn ? lineDelta : 0);
+    }
+
+    originalLineStart = originalLineEnd + 1;
+    updatedLineStart += updatedLine.length + 1;
+  }
+
+  return range.start + totalDelta;
+}
+
+function getLineCommentEditColumn(originalLine: string, updatedLine: string) {
+  let column = 0;
+  while (column < originalLine.length && column < updatedLine.length && originalLine[column] === updatedLine[column]) {
+    column += 1;
+  }
+  return column;
 }
 
 function highlightSqlKeywords(value: string) {

@@ -13,6 +13,7 @@ export type EditorAdapter = {
   onCursor(listener: () => void): () => void;
   getAnchorRect(): DOMRect;
   getTextOffsetRect(offset: number): DOMRect;
+  toggleLineComment(): void;
   runStatement(sql: string): boolean;
   setCurrentQueryRange(range: TextRange | null): void;
   setDiagnostics(messages: string[]): void;

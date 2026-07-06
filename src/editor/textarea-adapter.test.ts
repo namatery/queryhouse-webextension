@@ -73,3 +73,42 @@ describe('TextareaAdapter syntax highlighting', () => {
     adapter.destroy();
   });
 });
+
+describe('TextareaAdapter line comments', () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it('comments the current line', () => {
+    const textarea = document.createElement('textarea');
+    textarea.value = 'SELECT 1;\nSELECT 2;';
+    textarea.setSelectionRange(textarea.value.indexOf('2'), textarea.value.indexOf('2'));
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    adapter.toggleLineComment();
+
+    expect(textarea.value).toBe('SELECT 1;\n-- SELECT 2;');
+
+    adapter.destroy();
+  });
+
+  it('comments and uncomments selected lines', () => {
+    const textarea = document.createElement('textarea');
+    textarea.value = '  SELECT 1;\n  SELECT 2;\nSELECT 3;';
+    textarea.setSelectionRange(0, textarea.value.indexOf('\nSELECT 3;'));
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    adapter.toggleLineComment();
+
+    expect(textarea.value).toBe('  -- SELECT 1;\n  -- SELECT 2;\nSELECT 3;');
+
+    textarea.setSelectionRange(0, textarea.value.indexOf('\nSELECT 3;'));
+    adapter.toggleLineComment();
+
+    expect(textarea.value).toBe('  SELECT 1;\n  SELECT 2;\nSELECT 3;');
+
+    adapter.destroy();
+  });
+});
