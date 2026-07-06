@@ -14,7 +14,7 @@ describe('TextareaAdapter line numbers', () => {
     const adapter = new TextareaAdapter(textarea);
     const lineNumbers = document.querySelector('.queryhouse-line-numbers');
 
-    expect(lineNumbers?.textContent).toBe('1\n2\n3');
+    expect(lineNumbers?.textContent).toBe('\n1\n2');
     expect(textarea.style.paddingLeft).not.toBe('');
     expect(textarea.style.paddingTop).not.toBe('');
 
@@ -30,7 +30,7 @@ describe('TextareaAdapter line numbers', () => {
     textarea.value = 'SELECT 1;\nSELECT 2;\nSELECT 3;';
     textarea.dispatchEvent(new InputEvent('input', { bubbles: true }));
 
-    expect(document.querySelector('.queryhouse-line-numbers')?.textContent).toBe('1\n2\n3\n4');
+    expect(document.querySelector('.queryhouse-line-numbers')?.textContent).toBe('\n1\n2\n3');
 
     adapter.destroy();
   });
@@ -46,8 +46,22 @@ describe('TextareaAdapter line numbers', () => {
     const lineNumbers = document.querySelector<HTMLElement>('.queryhouse-line-numbers');
 
     expect(textarea.style.paddingTop).toBe('23px');
+    expect(lineNumbers?.textContent).toBe('\n1');
     expect(lineNumbers?.style.paddingTop).toBe('4px');
     expect(lineNumbers?.style.lineHeight).toBe('19px');
+
+    adapter.destroy();
+  });
+
+  it('leaves action rows unnumbered while numbering SQL rows', () => {
+    const textarea = document.createElement('textarea');
+    textarea.value = 'SELECT 1;\n\nSELECT 2;';
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    adapter.setActionRows([1]);
+
+    expect(document.querySelector('.queryhouse-line-numbers')?.textContent).toBe('\n1\n\n2');
 
     adapter.destroy();
   });

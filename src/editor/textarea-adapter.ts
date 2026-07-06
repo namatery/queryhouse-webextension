@@ -156,6 +156,7 @@ export class TextareaAdapter implements EditorAdapter {
   private readonly originalPaddingTop: string;
   private readonly basePaddingLeftPx: number;
   private readonly basePaddingTopPx: number;
+  private actionRows = new Set<number>();
   private disposers: Array<() => void> = [];
   private lineNumberWidth = 0;
 
@@ -265,6 +266,11 @@ export class TextareaAdapter implements EditorAdapter {
     return true;
   }
 
+  setActionRows(lineIndexes: number[]) {
+    this.actionRows = new Set(lineIndexes.filter((lineIndex) => lineIndex >= 0));
+    this.renderEditorOverlays();
+  }
+
   setCurrentQueryRange(range: TextRange | null) {
     this.element.classList.toggle('queryhouse-active-editor', range !== null);
     if (range) {
@@ -316,7 +322,7 @@ export class TextareaAdapter implements EditorAdapter {
     const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
     const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
     const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
-    const numbers = Array.from({ length: lineCount + 1 }, (_, index) => String(index + 1)).join('\n');
+    const numbers = renderLineNumbers(lineCount, this.actionRows);
 
     Object.assign(this.lineNumbers.style, {
       left: `${rect.left + borderLeft}px`,
@@ -562,6 +568,23 @@ function getEditorLineHeightPx(style: CSSStyleDeclaration) {
   }
 
   return 16 * DEFAULT_LINE_HEIGHT_MULTIPLIER;
+}
+
+function renderLineNumbers(lineCount: number, actionRows: Set<number>) {
+  const lines = [''];
+  let visibleLineNumber = 1;
+
+  for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
+    if (actionRows.has(lineIndex)) {
+      lines.push('');
+      continue;
+    }
+
+    lines.push(String(visibleLineNumber));
+    visibleLineNumber += 1;
+  }
+
+  return lines.join('\n');
 }
 
 function highlightSqlKeywords(value: string) {

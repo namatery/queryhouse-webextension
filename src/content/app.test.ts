@@ -84,6 +84,27 @@ describe('createQueryHouse autocomplete key handling', () => {
     queryHouse.destroy();
   });
 
+  it('marks blank spacer rows before later statements as unnumbered action rows', () => {
+    const textarea = document.createElement('textarea');
+    textarea.placeholder = 'SQL query';
+    textarea.rows = 8;
+    textarea.value = 'SELECT 1;\n\nSELECT 2;';
+    document.body.append(textarea);
+
+    const queryHouse = createQueryHouse(document, {
+      highlightCurrentQuery: true,
+      autocomplete: false,
+      localChecks: false,
+      parserValidation: false,
+      runCompletedStatement: true
+    });
+    queryHouse.mount();
+
+    expect(document.querySelector('.queryhouse-line-numbers')?.textContent).toBe('\n1\n\n2');
+
+    queryHouse.destroy();
+  });
+
   it('comments selected lines on Ctrl+/', () => {
     const textarea = document.createElement('textarea');
     textarea.placeholder = 'SQL query';

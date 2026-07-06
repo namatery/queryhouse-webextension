@@ -56,11 +56,10 @@ export function createRunStatementController(ownerDocument: Document): RunStatem
 
 function positionButton(button: HTMLElement, action: RunStatementAction) {
   const margin = 8;
-  const gap = 4;
   const rect = button.getBoundingClientRect();
   const anchor = action.anchor;
   let left = anchor.left;
-  let top = anchor.top - rect.height - gap;
+  let top = anchor.top - Math.max(rect.height, (anchor.height + rect.height) / 2);
 
   if (left + rect.width > window.innerWidth - margin) {
     left = window.innerWidth - margin - rect.width;

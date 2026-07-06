@@ -15,6 +15,7 @@ export type EditorAdapter = {
   getTextOffsetRect(offset: number): DOMRect;
   toggleLineComment(): void;
   runStatement(sql: string): boolean;
+  setActionRows(lineIndexes: number[]): void;
   setCurrentQueryRange(range: TextRange | null): void;
   setDiagnostics(messages: string[]): void;
   destroy(): void;
