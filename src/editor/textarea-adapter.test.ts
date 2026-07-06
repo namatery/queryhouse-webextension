@@ -14,8 +14,9 @@ describe('TextareaAdapter line numbers', () => {
     const adapter = new TextareaAdapter(textarea);
     const lineNumbers = document.querySelector('.queryhouse-line-numbers');
 
-    expect(lineNumbers?.textContent).toBe('1\n2');
+    expect(lineNumbers?.textContent).toBe('1\n2\n3');
     expect(textarea.style.paddingLeft).not.toBe('');
+    expect(textarea.style.paddingTop).not.toBe('');
 
     adapter.destroy();
   });
@@ -29,7 +30,7 @@ describe('TextareaAdapter line numbers', () => {
     textarea.value = 'SELECT 1;\nSELECT 2;\nSELECT 3;';
     textarea.dispatchEvent(new InputEvent('input', { bubbles: true }));
 
-    expect(document.querySelector('.queryhouse-line-numbers')?.textContent).toBe('1\n2\n3');
+    expect(document.querySelector('.queryhouse-line-numbers')?.textContent).toBe('1\n2\n3\n4');
 
     adapter.destroy();
   });
@@ -37,6 +38,7 @@ describe('TextareaAdapter line numbers', () => {
   it('removes line numbers and restores padding on destroy', () => {
     const textarea = document.createElement('textarea');
     textarea.style.paddingLeft = '12px';
+    textarea.style.paddingTop = '10px';
     textarea.value = 'SELECT 1;';
     document.body.append(textarea);
 
@@ -45,5 +47,6 @@ describe('TextareaAdapter line numbers', () => {
 
     expect(document.querySelector('.queryhouse-line-numbers')).toBeNull();
     expect(textarea.style.paddingLeft).toBe('12px');
+    expect(textarea.style.paddingTop).toBe('10px');
   });
 });

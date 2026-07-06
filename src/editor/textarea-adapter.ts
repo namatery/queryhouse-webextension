@@ -1,6 +1,7 @@
 import type { EditorAdapter, TextRange } from './types';
 
 const STYLE_ID = 'queryhouse-editor-style';
+const RUN_ACTION_ROW_HEIGHT = 22;
 
 function ensureStyles(ownerDocument: Document) {
   if (ownerDocument.getElementById(STYLE_ID)) {
@@ -73,7 +74,9 @@ export class TextareaAdapter implements EditorAdapter {
   private readonly highlightLayer: HTMLDivElement;
   private readonly lineNumbers: HTMLDivElement;
   private readonly originalPaddingLeft: string;
+  private readonly originalPaddingTop: string;
   private readonly basePaddingLeftPx: number;
+  private readonly basePaddingTopPx: number;
   private disposers: Array<() => void> = [];
   private lineNumberWidth = 0;
 
@@ -82,7 +85,9 @@ export class TextareaAdapter implements EditorAdapter {
     ensureStyles(element.ownerDocument);
     const initialStyle = window.getComputedStyle(element);
     this.originalPaddingLeft = element.style.paddingLeft;
+    this.originalPaddingTop = element.style.paddingTop;
     this.basePaddingLeftPx = Number.parseFloat(initialStyle.paddingLeft) || 0;
+    this.basePaddingTopPx = Number.parseFloat(initialStyle.paddingTop) || 0;
     this.highlightLayer = element.ownerDocument.createElement('div');
     this.highlightLayer.className = 'queryhouse-highlight-layer';
     this.highlightLayer.hidden = true;
@@ -189,6 +194,7 @@ export class TextareaAdapter implements EditorAdapter {
     this.disposers = [];
     this.element.classList.remove('queryhouse-active-editor');
     this.element.style.paddingLeft = this.originalPaddingLeft;
+    this.element.style.paddingTop = this.originalPaddingTop;
     this.lineNumbers.remove();
     this.highlightLayer.remove();
     this.diagnostics.remove();
@@ -201,21 +207,21 @@ export class TextareaAdapter implements EditorAdapter {
 
   private renderLineNumbers() {
     const lineCount = Math.max(1, this.element.value.split('\n').length);
-    this.updateLineNumberPadding(lineCount);
+    this.updateEditorPadding(lineCount);
 
     const rect = this.element.getBoundingClientRect();
     const style = window.getComputedStyle(this.element);
     const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
     const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
     const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
-    const numbers = Array.from({ length: lineCount }, (_, index) => String(index + 1)).join('\n');
+    const numbers = Array.from({ length: lineCount + 1 }, (_, index) => String(index + 1)).join('\n');
 
     Object.assign(this.lineNumbers.style, {
       left: `${rect.left + borderLeft}px`,
       top: `${rect.top + borderTop}px`,
       width: `${this.lineNumberWidth}px`,
       height: `${Math.max(0, rect.height - borderTop - borderBottom)}px`,
-      paddingTop: style.paddingTop,
+      paddingTop: `${this.basePaddingTopPx}px`,
       paddingRight: '8px',
       font: style.font,
       lineHeight: style.lineHeight,
@@ -228,14 +234,16 @@ export class TextareaAdapter implements EditorAdapter {
     this.lineNumbers.scrollTop = this.element.scrollTop;
   }
 
-  private updateLineNumberPadding(lineCount: number) {
-    const width = Math.max(36, String(lineCount).length * 8 + 22);
-    if (width === this.lineNumberWidth) {
+  private updateEditorPadding(lineCount: number) {
+    const width = Math.max(36, String(lineCount + 1).length * 8 + 22);
+    const paddingTop = `${this.basePaddingTopPx + RUN_ACTION_ROW_HEIGHT}px`;
+    if (width === this.lineNumberWidth && this.element.style.paddingTop === paddingTop) {
       return;
     }
 
     this.lineNumberWidth = width;
     this.element.style.paddingLeft = `${this.basePaddingLeftPx + width}px`;
+    this.element.style.paddingTop = paddingTop;
   }
 
   private renderHighlight = () => {

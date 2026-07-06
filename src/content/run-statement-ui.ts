@@ -28,7 +28,10 @@ export function createRunStatementController(ownerDocument: Document): RunStatem
         button.type = 'button';
         button.className = 'queryhouse-run-statement';
         button.dataset.queryhouseStatementId = action.id;
-        button.innerHTML = '<span class="queryhouse-run-statement-icon" aria-hidden="true"></span><span>Run</span>';
+        button.innerHTML = [
+          '<span class="queryhouse-run-statement-icon" aria-hidden="true"></span>',
+          '<span class="queryhouse-run-statement-run">Run</span>',
+        ].join('');
         button.addEventListener('mousedown', (event) => event.preventDefault());
         button.addEventListener('click', (event) => {
           event.preventDefault();
@@ -37,7 +40,7 @@ export function createRunStatementController(ownerDocument: Document): RunStatem
         });
         ownerDocument.body.append(button);
         button.style.visibility = 'hidden';
-        positionButton(button, action.anchor);
+        positionButton(button, action);
         button.style.visibility = '';
         buttons.push(button);
       });
@@ -51,10 +54,11 @@ export function createRunStatementController(ownerDocument: Document): RunStatem
   };
 }
 
-function positionButton(button: HTMLElement, anchor: DOMRect) {
+function positionButton(button: HTMLElement, action: RunStatementAction) {
   const margin = 8;
   const gap = 4;
   const rect = button.getBoundingClientRect();
+  const anchor = action.anchor;
   let left = anchor.left;
   let top = anchor.top - rect.height - gap;
 
@@ -86,20 +90,19 @@ function ensureStyles(ownerDocument: Document) {
       display: inline-flex;
       align-items: center;
       gap: 4px;
-      height: 20px;
+      height: 18px;
       border: 0;
       border-radius: 4px;
-      padding: 0 4px;
-      color: #1a73e8;
+      padding: 0;
+      color: #9aa0a6;
       background: transparent;
       box-shadow: none;
-      font: 12px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      font: 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       cursor: pointer;
     }
 
     .queryhouse-run-statement:hover {
-      color: #1558b0;
-      text-decoration: underline;
+      color: #5f6368;
     }
 
     .queryhouse-run-statement-icon {
@@ -108,6 +111,15 @@ function ensureStyles(ownerDocument: Document) {
       border-top: 4px solid transparent;
       border-bottom: 4px solid transparent;
       border-left: 7px solid currentColor;
+    }
+
+    .queryhouse-run-statement-run {
+      color: #6b7280;
+    }
+
+    .queryhouse-run-statement-separator,
+    .queryhouse-run-statement-hint {
+      color: #9aa0a6;
     }
   `;
   ownerDocument.head.append(style);
