@@ -21,7 +21,7 @@
   <a href="#install-locally">Install locally</a> ·
   <a href="#test-in-chrome">Test in Chrome</a> ·
   <a href="#development">Development</a> ·
-  <a href="#project-map">Project map</a>
+  <a href="#contribute">Contribute</a>
 </p>
 
 ## Why QueryHouse
@@ -38,16 +38,14 @@ The extension currently runs on:
 
 ## Features
 
-| Feature | Description |
-| --- | --- |
-| SQL editor detection | Detects supported ClickHouse SQL textareas and mounts QueryHouse only where it can help. |
-| Line numbers | Adds a stable gutter with line numbers and unnumbered action rows for statement controls. |
-| Run single statement | Shows `Run | +Tab | JSON` above completed statements and executes one statement through the host page's Run button. |
-| Static ClickHouse autocomplete | Suggests ClickHouse SQL keywords, including `FINAL`, `PREWHERE`, `QUALIFY`, `SAMPLE`, `LIMIT BY`, `SETTINGS`, and `FORMAT`. |
-| Syntax coloring | Colors SQL keywords and comments without adding a blue current-statement background. |
-| Comment shortcut | Toggles `--` line comments with `Ctrl+/` or `Cmd+/` for the current line or selected rows. |
-| Local diagnostics | Catches obvious mistakes such as dangling commas, unclosed strings, unmatched brackets, duplicated semicolons, missing trailing semicolons, and invalid `FINAL AS alias` ordering. |
-| Parser validation | Runs parser-based validation with `@clickhouse/parser`. |
+- 🔎 **SQL editor detection** - Detects supported ClickHouse SQL textareas and mounts QueryHouse only where it can help.
+- 🔢 **Line numbers** - Adds a stable gutter with line numbers and unnumbered action rows for statement controls.
+- ▶️ **Run single statement** - Shows `Run | +Tab | JSON` above completed statements and executes one statement through the host page's Run button.
+- 🧠 **Static ClickHouse autocomplete** - Suggests ClickHouse SQL keywords, including `FINAL`, `PREWHERE`, `QUALIFY`, `SAMPLE`, `LIMIT BY`, `SETTINGS`, and `FORMAT`.
+- 🎨 **Syntax coloring** - Colors SQL keywords and comments without adding a blue current-statement background.
+- 💬 **Comment shortcut** - Toggles `--` line comments with `Ctrl+/` or `Cmd+/` for the current line or selected rows.
+- 🩺 **Local diagnostics** - Catches obvious mistakes such as dangling commas, unclosed strings, unmatched brackets, duplicated semicolons, missing trailing semicolons, and invalid `FINAL AS alias` ordering.
+- ✅ **Parser validation** - Runs parser-based validation with `@clickhouse/parser`.
 
 ## Install Locally
 
@@ -101,27 +99,12 @@ npm run lint
 npm run build
 ```
 
-## Project Map
+## Contribute
 
-| Path | Responsibility |
-| --- | --- |
-| `entrypoints/content.ts` | Mounts the content script. |
-| `src/content/app.ts` | Coordinates editor detection, completions, diagnostics, run actions, and keyboard shortcuts. |
-| `src/content/autocomplete-ui.ts` | Renders the completion popup. |
-| `src/content/run-statement-ui.ts` | Renders per-statement Run actions. |
-| `src/editor/detect.ts` | Detects supported ClickHouse SQL editors. |
-| `src/editor/textarea-adapter.ts` | Adapts textarea behavior, line numbers, syntax coloring, diagnostics, line comments, and statement execution. |
-| `src/sql/completions.ts` | Stores static ClickHouse completions. |
-| `src/sql/diagnostics.ts` | Runs local syntax checks. |
-| `src/sql/parser-validator.ts` | Adapts `@clickhouse/parser` validation. |
-| `src/sql/statements.ts` | Splits SQL statements and detects the current statement. |
+Contributions are welcome. Please keep changes focused and run the validation commands before opening a pull request.
 
-## Tech Stack
-
-- WXT
-- Chrome MV3
-- React
-- TypeScript
-- Vitest
-- `@clickhouse/parser`
-
+- Fork the repository and create a branch for your change.
+- Install dependencies with `npm install`.
+- Make your changes with matching tests where behavior changes.
+- Run `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build`.
+- Open a pull request with a short summary and any testing notes.
