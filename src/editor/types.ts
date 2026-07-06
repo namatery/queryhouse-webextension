@@ -12,6 +12,8 @@ export type EditorAdapter = {
   onChange(listener: () => void): () => void;
   onCursor(listener: () => void): () => void;
   getAnchorRect(): DOMRect;
+  getTextOffsetRect(offset: number): DOMRect;
+  runStatement(sql: string): boolean;
   setCurrentQueryRange(range: TextRange | null): void;
   setDiagnostics(messages: string[]): void;
   destroy(): void;

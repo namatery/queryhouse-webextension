@@ -101,6 +101,29 @@ export function findCurrentStatement(sql: string, cursor: number): SqlStatement 
   );
 }
 
+export function getExecutableStatementText(sql: string, statement: TextRange): string | null {
+  const terminator = findStatementTerminator(sql, statement);
+  if (terminator === -1) {
+    return null;
+  }
+
+  return sql.slice(statement.start, terminator + 1).trim();
+}
+
+function findStatementTerminator(sql: string, statement: TextRange) {
+  for (let index = statement.end; index < sql.length; index += 1) {
+    const char = sql[index];
+    if (char === ';') {
+      return index;
+    }
+    if (!/\s/.test(char ?? '')) {
+      return -1;
+    }
+  }
+
+  return -1;
+}
+
 function pushStatement(statements: SqlStatement[], sql: string, rawStart: number, rawEnd: number) {
   const text = sql.slice(rawStart, rawEnd);
   const leading = text.search(/\S/);

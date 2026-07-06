@@ -1,10 +1,11 @@
 import { detectSqlEditor } from '../editor/detect';
 import type { EditorAdapter } from '../editor/types';
 import { createAutocompleteController } from './autocomplete-ui';
+import { createRunStatementController } from './run-statement-ui';
 import { getCompletions } from '../sql/completions';
 import { runLocalDiagnostics } from '../sql/diagnostics';
 import { runParserValidation } from '../sql/parser-validator';
-import { findCurrentStatement } from '../sql/statements';
+import { findCurrentStatement, getExecutableStatementText } from '../sql/statements';
 
 const VALIDATION_DELAY_MS = 250;
 
@@ -13,19 +14,22 @@ export type FeatureFlags = {
   autocomplete: boolean;
   localChecks: boolean;
   parserValidation: boolean;
+  runCompletedStatement: boolean;
 };
 
 const DEFAULT_FLAGS: FeatureFlags = {
   highlightCurrentQuery: true,
   autocomplete: true,
   localChecks: true,
-  parserValidation: true
+  parserValidation: true,
+  runCompletedStatement: true
 };
 
 export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = DEFAULT_FLAGS) {
   let adapter: EditorAdapter | null = null;
   let validationTimer: number | undefined;
   const autocomplete = createAutocompleteController(ownerDocument);
+  const runStatement = createRunStatementController(ownerDocument);
   const disposers: Array<() => void> = [];
 
   function mount() {
@@ -49,10 +53,33 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
 
   function refreshHighlight() {
     if (!adapter || !flags.highlightCurrentQuery) {
+      runStatement.hide();
       return;
     }
 
-    adapter.setCurrentQueryRange(findCurrentStatement(adapter.getText(), adapter.getCursor()));
+    const sql = adapter.getText();
+    const statement = findCurrentStatement(sql, adapter.getCursor());
+    adapter.setCurrentQueryRange(statement);
+    refreshRunStatementAction(sql, statement);
+  }
+
+  function refreshRunStatementAction(sql: string, statement: ReturnType<typeof findCurrentStatement>) {
+    if (!adapter || !flags.runCompletedStatement || !statement) {
+      runStatement.hide();
+      return;
+    }
+
+    const executableSql = getExecutableStatementText(sql, statement);
+    if (!executableSql) {
+      runStatement.hide();
+      return;
+    }
+
+    runStatement.show(adapter.getTextOffsetRect(statement.end), () => {
+      if (!adapter?.runStatement(executableSql)) {
+        adapter?.setDiagnostics(['QueryHouse could not find the ClickHouse Run button for this editor.']);
+      }
+    });
   }
 
   function refreshAutocomplete() {
@@ -104,6 +131,7 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
     window.clearTimeout(validationTimer);
     disposers.forEach((dispose) => dispose());
     disposers.length = 0;
+    runStatement.destroy();
     autocomplete.destroy();
     adapter?.destroy();
     adapter = null;

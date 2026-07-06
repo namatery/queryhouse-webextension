@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { findCurrentStatement, splitSqlStatements } from './statements';
+import { findCurrentStatement, getExecutableStatementText, splitSqlStatements } from './statements';
 
 describe('splitSqlStatements', () => {
   it('splits statements on semicolons', () => {
@@ -27,5 +27,21 @@ describe('findCurrentStatement', () => {
 
   it('returns null for whitespace-only text', () => {
     expect(findCurrentStatement('  \n ', 0)).toBeNull();
+  });
+});
+
+describe('getExecutableStatementText', () => {
+  it('returns the complete statement including its semicolon', () => {
+    const sql = 'SELECT 1 ;\nSELECT 2;';
+    const statement = findCurrentStatement(sql, 1);
+
+    expect(statement ? getExecutableStatementText(sql, statement) : null).toBe('SELECT 1 ;');
+  });
+
+  it('returns null for an incomplete statement', () => {
+    const sql = 'SELECT 1;\nSELECT 2';
+    const statement = findCurrentStatement(sql, sql.length);
+
+    expect(statement ? getExecutableStatementText(sql, statement) : null).toBeNull();
   });
 });

@@ -132,7 +132,32 @@ export class TextareaAdapter implements EditorAdapter {
   }
 
   getAnchorRect() {
-    return this.getCaretAnchorRect();
+    return this.getTextOffsetRect(this.element.selectionStart);
+  }
+
+  getTextOffsetRect(offset: number) {
+    return this.getTextOffsetRectInternal(offset);
+  }
+
+  runStatement(sql: string) {
+    const runButton = findHostRunButton(this.element);
+    if (!runButton) {
+      return false;
+    }
+
+    const originalValue = this.element.value;
+    const originalSelection = this.getSelection();
+    this.setValueForHost(sql);
+    this.element.setSelectionRange(sql.length, sql.length);
+    runButton.click();
+
+    window.setTimeout(() => {
+      this.setValueForHost(originalValue);
+      this.element.setSelectionRange(originalSelection.start, originalSelection.end);
+      this.renderEditorOverlays();
+    }, 0);
+
+    return true;
   }
 
   setCurrentQueryRange(range: TextRange | null) {
@@ -155,7 +180,7 @@ export class TextareaAdapter implements EditorAdapter {
     this.diagnostics.textContent = messages.join('\n');
     this.diagnostics.hidden = false;
     this.diagnostics.style.visibility = 'hidden';
-    this.positionFloatingElement(this.diagnostics, this.getCaretAnchorRect(), 6);
+    this.positionFloatingElement(this.diagnostics, this.getAnchorRect(), 6);
     this.diagnostics.style.visibility = '';
   }
 
@@ -244,7 +269,7 @@ export class TextareaAdapter implements EditorAdapter {
     this.highlightLayer.hidden = false;
   };
 
-  private getCaretAnchorRect() {
+  private getTextOffsetRectInternal(offset: number) {
     const ownerDocument = this.element.ownerDocument;
     const ownerWindow = ownerDocument.defaultView ?? window;
     const editorRect = this.element.getBoundingClientRect();
@@ -277,7 +302,7 @@ export class TextareaAdapter implements EditorAdapter {
       tabSize: style.tabSize
     });
 
-    mirror.textContent = this.element.value.slice(0, this.element.selectionStart);
+    mirror.textContent = this.element.value.slice(0, Math.max(0, Math.min(offset, this.element.value.length)));
     marker.textContent = '\u200b';
     mirror.append(marker);
     ownerDocument.body.append(mirror);
@@ -290,6 +315,16 @@ export class TextareaAdapter implements EditorAdapter {
     mirror.remove();
 
     return new ownerWindow.DOMRect(left, top, 1, Math.max(1, markerRect.height || lineHeight));
+  }
+
+  private setValueForHost(value: string) {
+    const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
+    if (setter) {
+      setter.call(this.element, value);
+    } else {
+      this.element.value = value;
+    }
+    this.element.dispatchEvent(new InputEvent('input', { bubbles: true, inputType: 'insertReplacementText', data: value }));
   }
 
   private positionFloatingElement(element: HTMLElement, anchor: DOMRect, gap: number) {
@@ -322,6 +357,44 @@ export class TextareaAdapter implements EditorAdapter {
     this.disposers.push(dispose);
     return dispose;
   }
+}
+
+function findHostRunButton(element: HTMLElement): HTMLButtonElement | HTMLInputElement | null {
+  const scopes = [element.closest('form'), element.ownerDocument.body].filter((scope): scope is HTMLElement => scope !== null);
+
+  for (const scope of scopes) {
+    const candidates = Array.from(scope.querySelectorAll<HTMLButtonElement | HTMLInputElement>('button, input[type="button"], input[type="submit"]'))
+      .filter((candidate) => !candidate.disabled && !candidate.classList.contains('queryhouse-run-statement'));
+    const runButton = candidates
+      .map((candidate) => ({ candidate, score: scoreRunCandidate(candidate) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)[0]?.candidate;
+
+    if (runButton) {
+      return runButton;
+    }
+  }
+
+  return null;
+}
+
+function scoreRunCandidate(candidate: HTMLButtonElement | HTMLInputElement) {
+  const haystack = [
+    candidate.textContent,
+    candidate.getAttribute('aria-label'),
+    candidate.getAttribute('title'),
+    candidate.value,
+    candidate.id,
+    candidate.className
+  ]
+    .join(' ')
+    .toLowerCase();
+
+  let score = 0;
+  if (/\brun\b|\bexecute\b|\bquery\b/.test(haystack)) score += 5;
+  if (candidate.type === 'submit') score += 1;
+  if (candidate.getAttribute('aria-label')) score += 1;
+  return score;
 }
 
 function escapeHtml(value: string) {
