@@ -6,6 +6,10 @@ describe('isLocalClickHousePlayUrl', () => {
     expect(isLocalClickHousePlayUrl({ hostname: 'localhost', pathname: '/play' } as Location)).toBe(true);
   });
 
+  it('accepts the hosted ClickHouse web interface', () => {
+    expect(isLocalClickHousePlayUrl({ hostname: 'clickhouse.hamtadns.com', pathname: '/' } as Location)).toBe(true);
+  });
+
   it('rejects non-local hosts', () => {
     expect(isLocalClickHousePlayUrl({ hostname: 'example.com', pathname: '/play' } as Location)).toBe(false);
   });

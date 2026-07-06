@@ -1,10 +1,10 @@
 import { TextareaAdapter } from './textarea-adapter';
 import type { EditorAdapter } from './types';
 
-const LOCAL_PLAY_HOSTS = new Set(['localhost', '127.0.0.1']);
+const SUPPORTED_CLICKHOUSE_HOSTS = new Set(['localhost', '127.0.0.1', 'clickhouse.hamtadns.com']);
 
 export function isLocalClickHousePlayUrl(location: Pick<Location, 'hostname' | 'pathname'>) {
-  if (!LOCAL_PLAY_HOSTS.has(location.hostname)) {
+  if (!SUPPORTED_CLICKHOUSE_HOSTS.has(location.hostname)) {
     return false;
   }
 

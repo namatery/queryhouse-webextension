@@ -7,7 +7,7 @@ export default defineConfig({
     description: 'Local ClickHouse Play SQL editor helpers.',
     version: '0.1.0',
     permissions: ['storage'],
-    host_permissions: ['http://localhost/*', 'http://127.0.0.1/*'],
+    host_permissions: ['http://localhost/*', 'http://127.0.0.1/*', 'https://clickhouse.hamtadns.com/*'],
     action: {
       default_title: 'QueryHouse',
       default_popup: 'popup.html'
