@@ -92,7 +92,7 @@ function ensureStyles(ownerDocument: Document) {
     .queryhouse-syntax-editor {
       color: transparent !important;
       -webkit-text-fill-color: transparent !important;
-      caret-color: #111827 !important;
+      caret-color: var(--queryhouse-editor-text-color, #111827) !important;
     }
 
     .queryhouse-highlight-layer {
@@ -101,18 +101,18 @@ function ensureStyles(ownerDocument: Document) {
       pointer-events: none;
       overflow: hidden;
       box-sizing: border-box;
-      color: #111827;
+      color: var(--queryhouse-editor-text-color, #111827);
       white-space: pre-wrap;
       word-wrap: break-word;
       border: 1px solid transparent;
     }
 
     .queryhouse-syntax-keyword {
-      color: #0000ff;
+      color: var(--queryhouse-editor-keyword-color, #0000ff);
     }
 
     .queryhouse-syntax-comment {
-      color: #008000;
+      color: var(--queryhouse-editor-comment-color, #008000);
     }
 
     .queryhouse-line-numbers {
@@ -301,6 +301,7 @@ export class TextareaAdapter implements EditorAdapter {
     this.element.classList.remove('queryhouse-syntax-editor');
     this.element.style.paddingLeft = this.originalPaddingLeft;
     this.element.style.paddingTop = this.originalPaddingTop;
+    this.element.style.removeProperty('--queryhouse-editor-text-color');
     this.lineNumbers.remove();
     this.highlightLayer.remove();
     this.diagnostics.remove();
@@ -358,6 +359,8 @@ export class TextareaAdapter implements EditorAdapter {
     const value = this.element.value;
     const rect = this.element.getBoundingClientRect();
     const style = window.getComputedStyle(this.element);
+    const theme = getEditorTheme(this.element);
+    this.element.style.setProperty('--queryhouse-editor-text-color', theme.textColor);
     Object.assign(this.highlightLayer.style, {
       left: `${rect.left}px`,
       top: `${rect.top}px`,
@@ -369,6 +372,9 @@ export class TextareaAdapter implements EditorAdapter {
       letterSpacing: style.letterSpacing,
       borderRadius: style.borderRadius
     });
+    this.highlightLayer.style.setProperty('--queryhouse-editor-text-color', theme.textColor);
+    this.highlightLayer.style.setProperty('--queryhouse-editor-keyword-color', theme.keywordColor);
+    this.highlightLayer.style.setProperty('--queryhouse-editor-comment-color', theme.commentColor);
 
     this.highlightLayer.innerHTML = highlightSqlKeywords(value);
     this.highlightLayer.scrollTop = this.element.scrollTop;
@@ -568,6 +574,60 @@ function getEditorLineHeightPx(style: CSSStyleDeclaration) {
   }
 
   return 16 * DEFAULT_LINE_HEIGHT_MULTIPLIER;
+}
+
+function getEditorTheme(element: HTMLTextAreaElement) {
+  const hadSyntaxClass = element.classList.contains('queryhouse-syntax-editor');
+  if (hadSyntaxClass) {
+    element.classList.remove('queryhouse-syntax-editor');
+  }
+
+  const visibleStyle = window.getComputedStyle(element);
+  const visibleTextColor = isTransparentColor(visibleStyle.color) ? '#111827' : visibleStyle.color;
+  const textRgb = parseRgbColor(visibleTextColor);
+  const backgroundRgb = isTransparentColor(visibleStyle.backgroundColor) ? null : parseRgbColor(visibleStyle.backgroundColor);
+  const usesDarkEditor = backgroundRgb
+    ? getRelativeLuminance(backgroundRgb) < 0.35
+    : textRgb
+      ? getRelativeLuminance(textRgb) > 0.55
+      : false;
+
+  if (hadSyntaxClass) {
+    element.classList.add('queryhouse-syntax-editor');
+  }
+
+  return {
+    textColor: usesDarkEditor ? '#f8fafc' : visibleTextColor,
+    keywordColor: usesDarkEditor ? '#facc15' : '#0000ff',
+    commentColor: usesDarkEditor ? '#4ade80' : '#008000'
+  };
+}
+
+function isTransparentColor(value: string) {
+  const alpha = value.match(/rgba\(\s*[.\d]+\s*,\s*[.\d]+\s*,\s*[.\d]+\s*,\s*([.\d]+)\s*\)/i)?.[1];
+  return value === 'transparent' || (alpha !== undefined && Number.parseFloat(alpha) === 0);
+}
+
+function parseRgbColor(value: string) {
+  const match = value.match(/rgba?\(\s*([.\d]+)\s*,\s*([.\d]+)\s*,\s*([.\d]+)/i);
+  if (!match) {
+    return null;
+  }
+
+  return {
+    r: Number(match[1]),
+    g: Number(match[2]),
+    b: Number(match[3])
+  };
+}
+
+function getRelativeLuminance(color: { r: number; g: number; b: number }) {
+  const [r, g, b] = [color.r, color.g, color.b].map((channel) => {
+    const normalized = channel / 255;
+    return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
+  });
+
+  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
 }
 
 function renderLineNumbers(lineCount: number, actionRows: Set<number>) {

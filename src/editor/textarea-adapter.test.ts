@@ -121,6 +121,24 @@ describe('TextareaAdapter syntax highlighting', () => {
 
     adapter.destroy();
   });
+
+  it('uses readable overlay colors when the host editor is dark', () => {
+    const textarea = document.createElement('textarea');
+    textarea.style.color = 'rgb(229, 231, 235)';
+    textarea.style.backgroundColor = 'rgb(17, 24, 39)';
+    textarea.value = '-- comment\nSELECT value;';
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    const syntaxLayer = document.querySelector<HTMLElement>('.queryhouse-highlight-layer');
+
+    expect(textarea.style.getPropertyValue('--queryhouse-editor-text-color')).toBe('#f8fafc');
+    expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-text-color')).toBe('#f8fafc');
+    expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-keyword-color')).toBe('#facc15');
+    expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-comment-color')).toBe('#4ade80');
+
+    adapter.destroy();
+  });
 });
 
 describe('TextareaAdapter line comments', () => {

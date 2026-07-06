@@ -90,18 +90,19 @@ function ensureStyles(ownerDocument: Document) {
       align-items: center;
       gap: 4px;
       height: 18px;
-      border: 0;
+      border: 1px solid rgba(248, 250, 252, 0.16);
       border-radius: 4px;
-      padding: 0;
-      color: #9aa0a6;
-      background: transparent;
-      box-shadow: none;
+      padding: 0 4px;
+      color: #f8fafc;
+      background: rgba(15, 23, 42, 0.72);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.28);
       font: 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       cursor: pointer;
     }
 
     .queryhouse-run-statement:hover {
-      color: #5f6368;
+      color: #ffffff;
+      background: rgba(15, 23, 42, 0.88);
     }
 
     .queryhouse-run-statement-icon {
@@ -113,12 +114,12 @@ function ensureStyles(ownerDocument: Document) {
     }
 
     .queryhouse-run-statement-run {
-      color: #6b7280;
+      color: currentColor;
     }
 
     .queryhouse-run-statement-separator,
     .queryhouse-run-statement-hint {
-      color: #9aa0a6;
+      color: #cbd5e1;
     }
   `;
   ownerDocument.head.append(style);
