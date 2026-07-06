@@ -111,6 +111,10 @@ function ensureStyles(ownerDocument: Document) {
       color: #0000ff;
     }
 
+    .queryhouse-syntax-comment {
+      color: #008000;
+    }
+
     .queryhouse-line-numbers {
       position: fixed;
       z-index: 2147483646;
@@ -555,7 +559,7 @@ function highlightSqlKeywords(value: string) {
     if (char === '-' && next === '-') {
       const end = value.indexOf('\n', index + 2);
       const stop = end === -1 ? value.length : end;
-      html += escapeHtml(value.slice(index, stop));
+      html += renderCommentToken(value.slice(index, stop));
       index = stop;
       continue;
     }
@@ -563,7 +567,7 @@ function highlightSqlKeywords(value: string) {
     if (char === '/' && next === '*') {
       const end = value.indexOf('*/', index + 2);
       const stop = end === -1 ? value.length : end + 2;
-      html += escapeHtml(value.slice(index, stop));
+      html += renderCommentToken(value.slice(index, stop));
       index = stop;
       continue;
     }
@@ -591,6 +595,10 @@ function highlightSqlKeywords(value: string) {
   }
 
   return html;
+}
+
+function renderCommentToken(value: string) {
+  return `<span class="queryhouse-syntax-comment">${escapeHtml(value)}</span>`;
 }
 
 function findQuotedTokenEnd(value: string, start: number, quote: string) {

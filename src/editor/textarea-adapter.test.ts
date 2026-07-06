@@ -72,6 +72,24 @@ describe('TextareaAdapter syntax highlighting', () => {
 
     adapter.destroy();
   });
+
+  it('colors commented ranges green without coloring keywords inside comments', () => {
+    const textarea = document.createElement('textarea');
+    textarea.value = '-- SELECT 1;\n/* FROM events */\nSELECT value;';
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    const syntaxLayer = document.querySelector('.queryhouse-highlight-layer');
+    const comments = syntaxLayer?.querySelectorAll('.queryhouse-syntax-comment');
+
+    expect(comments).toHaveLength(2);
+    expect(comments?.[0]?.textContent).toBe('-- SELECT 1;');
+    expect(comments?.[1]?.textContent).toBe('/* FROM events */');
+    expect(comments?.[0]?.querySelector('.queryhouse-syntax-keyword')).toBeNull();
+    expect(syntaxLayer?.querySelectorAll('.queryhouse-syntax-keyword')).toHaveLength(1);
+
+    adapter.destroy();
+  });
 });
 
 describe('TextareaAdapter line comments', () => {
