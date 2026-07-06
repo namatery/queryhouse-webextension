@@ -94,7 +94,10 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
   }
 
   function handleKeydown(event: KeyboardEvent) {
-    autocomplete.handleKeydown(event);
+    if (autocomplete.handleKeydown(event)) {
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+    }
   }
 
   function destroy() {
