@@ -50,3 +50,26 @@ describe('TextareaAdapter line numbers', () => {
     expect(textarea.style.paddingTop).toBe('10px');
   });
 });
+
+describe('TextareaAdapter syntax highlighting', () => {
+  afterEach(() => {
+    document.body.replaceChildren();
+  });
+
+  it('colors keywords without marking the current statement background', () => {
+    const textarea = document.createElement('textarea');
+    textarea.value = "SELECT value FROM events WHERE label = 'SELECT';";
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    adapter.setCurrentQueryRange({ start: 0, end: textarea.value.length });
+    const syntaxLayer = document.querySelector('.queryhouse-highlight-layer');
+
+    expect(syntaxLayer?.querySelector('mark')).toBeNull();
+    expect(syntaxLayer?.querySelectorAll('.queryhouse-syntax-keyword')).toHaveLength(3);
+    expect(syntaxLayer?.innerHTML).toContain('<span class="queryhouse-syntax-keyword">SELECT</span>');
+    expect(syntaxLayer?.innerHTML).toContain("'SELECT'");
+
+    adapter.destroy();
+  });
+});

@@ -2,6 +2,79 @@ import type { EditorAdapter, TextRange } from './types';
 
 const STYLE_ID = 'queryhouse-editor-style';
 const RUN_ACTION_ROW_HEIGHT = 22;
+const SQL_KEYWORDS = new Set([
+  'ADD',
+  'ALTER',
+  'AND',
+  'ANTI',
+  'ANY',
+  'ARRAY',
+  'AS',
+  'ASC',
+  'ASOF',
+  'BETWEEN',
+  'BY',
+  'CASE',
+  'CREATE',
+  'CROSS',
+  'DATABASE',
+  'DELETE',
+  'DESC',
+  'DESCRIBE',
+  'DISTINCT',
+  'DROP',
+  'ELSE',
+  'END',
+  'EXCEPT',
+  'EXISTS',
+  'FINAL',
+  'FORMAT',
+  'FROM',
+  'FULL',
+  'GLOBAL',
+  'GROUP',
+  'HAVING',
+  'IF',
+  'ILIKE',
+  'IN',
+  'INNER',
+  'INSERT',
+  'INTERSECT',
+  'INTO',
+  'IS',
+  'JOIN',
+  'LEFT',
+  'LIKE',
+  'LIMIT',
+  'NOT',
+  'NULL',
+  'OFFSET',
+  'ON',
+  'OPTIMIZE',
+  'OR',
+  'ORDER',
+  'OUTER',
+  'PREWHERE',
+  'QUALIFY',
+  'REPLACE',
+  'RIGHT',
+  'SAMPLE',
+  'SELECT',
+  'SEMI',
+  'SET',
+  'SETTINGS',
+  'SHOW',
+  'TABLE',
+  'THEN',
+  'UNION',
+  'UPDATE',
+  'USE',
+  'USING',
+  'WHEN',
+  'WHERE',
+  'WINDOW',
+  'WITH'
+]);
 
 function ensureStyles(ownerDocument: Document) {
   if (ownerDocument.getElementById(STYLE_ID)) {
@@ -12,9 +85,14 @@ function ensureStyles(ownerDocument: Document) {
   style.id = STYLE_ID;
   style.textContent = `
     .queryhouse-active-editor {
-      box-shadow: inset 3px 0 0 #1a73e8 !important;
-      outline: 1px solid rgba(26, 115, 232, 0.45) !important;
+      outline: 1px solid rgba(148, 163, 184, 0.45) !important;
       outline-offset: 0 !important;
+    }
+
+    .queryhouse-syntax-editor {
+      color: transparent !important;
+      -webkit-text-fill-color: transparent !important;
+      caret-color: #111827 !important;
     }
 
     .queryhouse-highlight-layer {
@@ -23,16 +101,14 @@ function ensureStyles(ownerDocument: Document) {
       pointer-events: none;
       overflow: hidden;
       box-sizing: border-box;
-      color: transparent;
+      color: #111827;
       white-space: pre-wrap;
       word-wrap: break-word;
       border: 1px solid transparent;
     }
 
-    .queryhouse-highlight-layer mark {
-      color: transparent;
-      background: rgba(26, 115, 232, 0.16);
-      border-radius: 3px;
+    .queryhouse-syntax-keyword {
+      color: #0000ff;
     }
 
     .queryhouse-line-numbers {
@@ -69,7 +145,6 @@ function ensureStyles(ownerDocument: Document) {
 export class TextareaAdapter implements EditorAdapter {
   readonly element: HTMLTextAreaElement;
 
-  private currentQueryRange: TextRange | null = null;
   private readonly diagnostics: HTMLDivElement;
   private readonly highlightLayer: HTMLDivElement;
   private readonly lineNumbers: HTMLDivElement;
@@ -90,7 +165,7 @@ export class TextareaAdapter implements EditorAdapter {
     this.basePaddingTopPx = Number.parseFloat(initialStyle.paddingTop) || 0;
     this.highlightLayer = element.ownerDocument.createElement('div');
     this.highlightLayer.className = 'queryhouse-highlight-layer';
-    this.highlightLayer.hidden = true;
+    this.element.classList.add('queryhouse-syntax-editor');
     this.lineNumbers = element.ownerDocument.createElement('div');
     this.lineNumbers.className = 'queryhouse-line-numbers';
     this.diagnostics = element.ownerDocument.createElement('div');
@@ -166,7 +241,6 @@ export class TextareaAdapter implements EditorAdapter {
   }
 
   setCurrentQueryRange(range: TextRange | null) {
-    this.currentQueryRange = range;
     this.element.classList.toggle('queryhouse-active-editor', range !== null);
     if (range) {
       this.element.dataset.queryhouseCurrentQuery = `${range.start}:${range.end}`;
@@ -193,6 +267,7 @@ export class TextareaAdapter implements EditorAdapter {
     this.disposers.forEach((dispose) => dispose());
     this.disposers = [];
     this.element.classList.remove('queryhouse-active-editor');
+    this.element.classList.remove('queryhouse-syntax-editor');
     this.element.style.paddingLeft = this.originalPaddingLeft;
     this.element.style.paddingTop = this.originalPaddingTop;
     this.lineNumbers.remove();
@@ -202,7 +277,7 @@ export class TextareaAdapter implements EditorAdapter {
 
   private renderEditorOverlays = () => {
     this.renderLineNumbers();
-    this.renderHighlight();
+    this.renderSyntax();
   };
 
   private renderLineNumbers() {
@@ -246,14 +321,8 @@ export class TextareaAdapter implements EditorAdapter {
     this.element.style.paddingTop = paddingTop;
   }
 
-  private renderHighlight = () => {
-    if (!this.currentQueryRange) {
-      this.highlightLayer.hidden = true;
-      return;
-    }
-
+  private renderSyntax = () => {
     const value = this.element.value;
-    const range = this.currentQueryRange;
     const rect = this.element.getBoundingClientRect();
     const style = window.getComputedStyle(this.element);
     Object.assign(this.highlightLayer.style, {
@@ -268,10 +337,7 @@ export class TextareaAdapter implements EditorAdapter {
       borderRadius: style.borderRadius
     });
 
-    const before = escapeHtml(value.slice(0, range.start));
-    const current = escapeHtml(value.slice(range.start, range.end)) || '&nbsp;';
-    const after = escapeHtml(value.slice(range.end));
-    this.highlightLayer.innerHTML = `${before}<mark>${current}</mark>${after}`;
+    this.highlightLayer.innerHTML = highlightSqlKeywords(value);
     this.highlightLayer.scrollTop = this.element.scrollTop;
     this.highlightLayer.scrollLeft = this.element.scrollLeft;
     this.highlightLayer.hidden = false;
@@ -403,6 +469,75 @@ function scoreRunCandidate(candidate: HTMLButtonElement | HTMLInputElement) {
   if (candidate.type === 'submit') score += 1;
   if (candidate.getAttribute('aria-label')) score += 1;
   return score;
+}
+
+function highlightSqlKeywords(value: string) {
+  let html = '';
+  let index = 0;
+
+  while (index < value.length) {
+    const char = value[index];
+    const next = value[index + 1];
+
+    if (char === '-' && next === '-') {
+      const end = value.indexOf('\n', index + 2);
+      const stop = end === -1 ? value.length : end;
+      html += escapeHtml(value.slice(index, stop));
+      index = stop;
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      const end = value.indexOf('*/', index + 2);
+      const stop = end === -1 ? value.length : end + 2;
+      html += escapeHtml(value.slice(index, stop));
+      index = stop;
+      continue;
+    }
+
+    if (char === "'" || char === '"' || char === '`') {
+      const stop = findQuotedTokenEnd(value, index, char);
+      html += escapeHtml(value.slice(index, stop));
+      index = stop;
+      continue;
+    }
+
+    if (char && /[A-Za-z_]/.test(char)) {
+      let end = index + 1;
+      while (end < value.length && /[A-Za-z0-9_]/.test(value[end] ?? '')) {
+        end += 1;
+      }
+      const word = value.slice(index, end);
+      html += SQL_KEYWORDS.has(word.toUpperCase()) ? `<span class="queryhouse-syntax-keyword">${escapeHtml(word)}</span>` : escapeHtml(word);
+      index = end;
+      continue;
+    }
+
+    html += escapeHtml(char ?? '');
+    index += 1;
+  }
+
+  return html;
+}
+
+function findQuotedTokenEnd(value: string, start: number, quote: string) {
+  for (let index = start + 1; index < value.length; index += 1) {
+    const char = value[index];
+    const next = value[index + 1];
+    if (char === '\\') {
+      index += 1;
+      continue;
+    }
+    if (char === quote) {
+      if ((quote === "'" || quote === '"') && next === quote) {
+        index += 1;
+        continue;
+      }
+      return index + 1;
+    }
+  }
+
+  return value.length;
 }
 
 function escapeHtml(value: string) {
