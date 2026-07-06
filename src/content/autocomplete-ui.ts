@@ -41,10 +41,11 @@ export function createAutocompleteController(ownerDocument: Document): Autocompl
       items = result.items;
       selected = 0;
       pick = onPick;
-      list.style.left = `${Math.max(12, anchor.left)}px`;
-      list.style.top = `${Math.min(window.innerHeight - 180, anchor.bottom + 8)}px`;
-      list.hidden = false;
       render();
+      list.hidden = false;
+      list.style.visibility = 'hidden';
+      positionFloatingElement(list, anchor, 6);
+      list.style.visibility = '';
     },
     hide() {
       list.hidden = true;
@@ -87,6 +88,30 @@ export function createAutocompleteController(ownerDocument: Document): Autocompl
       list.remove();
     }
   };
+}
+
+function positionFloatingElement(element: HTMLElement, anchor: DOMRect, gap: number) {
+  const margin = 8;
+  const rect = element.getBoundingClientRect();
+  const viewportWidth = window.innerWidth;
+  const viewportHeight = window.innerHeight;
+  let left = anchor.left;
+  let top = anchor.bottom + gap;
+
+  if (left + rect.width > viewportWidth - margin) {
+    left = viewportWidth - margin - rect.width;
+  }
+  left = Math.max(margin, left);
+
+  if (top + rect.height > viewportHeight - margin) {
+    top = anchor.top - rect.height - gap;
+  }
+  if (top < margin) {
+    top = Math.max(margin, Math.min(anchor.bottom + gap, viewportHeight - margin - rect.height));
+  }
+
+  element.style.left = `${left}px`;
+  element.style.top = `${top}px`;
 }
 
 function ensureStyles(ownerDocument: Document) {

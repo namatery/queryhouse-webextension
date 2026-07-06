@@ -107,7 +107,7 @@ export class TextareaAdapter implements EditorAdapter {
   }
 
   getAnchorRect() {
-    return this.element.getBoundingClientRect();
+    return this.getCaretAnchorRect();
   }
 
   setCurrentQueryRange(range: TextRange | null) {
@@ -127,11 +127,11 @@ export class TextareaAdapter implements EditorAdapter {
       return;
     }
 
-    const rect = this.element.getBoundingClientRect();
     this.diagnostics.textContent = messages.join('\n');
-    this.diagnostics.style.left = `${Math.max(12, rect.left)}px`;
-    this.diagnostics.style.top = `${Math.min(window.innerHeight - 48, rect.bottom + 8)}px`;
     this.diagnostics.hidden = false;
+    this.diagnostics.style.visibility = 'hidden';
+    this.positionFloatingElement(this.diagnostics, this.getCaretAnchorRect(), 6);
+    this.diagnostics.style.visibility = '';
   }
 
   destroy() {
@@ -172,6 +172,78 @@ export class TextareaAdapter implements EditorAdapter {
     this.highlightLayer.scrollLeft = this.element.scrollLeft;
     this.highlightLayer.hidden = false;
   };
+
+  private getCaretAnchorRect() {
+    const ownerDocument = this.element.ownerDocument;
+    const ownerWindow = ownerDocument.defaultView ?? window;
+    const editorRect = this.element.getBoundingClientRect();
+    const style = ownerWindow.getComputedStyle(this.element);
+    const mirror = ownerDocument.createElement('div');
+    const marker = ownerDocument.createElement('span');
+
+    Object.assign(mirror.style, {
+      position: 'fixed',
+      left: '-10000px',
+      top: '0',
+      visibility: 'hidden',
+      boxSizing: style.boxSizing,
+      width: `${editorRect.width}px`,
+      minHeight: `${editorRect.height}px`,
+      borderTop: style.borderTop,
+      borderRight: style.borderRight,
+      borderBottom: style.borderBottom,
+      borderLeft: style.borderLeft,
+      padding: style.padding,
+      font: style.font,
+      lineHeight: style.lineHeight,
+      letterSpacing: style.letterSpacing,
+      textAlign: style.textAlign,
+      textTransform: style.textTransform,
+      textIndent: style.textIndent,
+      whiteSpace: this.element.wrap === 'off' ? 'pre' : 'pre-wrap',
+      overflowWrap: this.element.wrap === 'off' ? 'normal' : 'break-word',
+      wordBreak: style.wordBreak,
+      tabSize: style.tabSize
+    });
+
+    mirror.textContent = this.element.value.slice(0, this.element.selectionStart);
+    marker.textContent = '\u200b';
+    mirror.append(marker);
+    ownerDocument.body.append(mirror);
+
+    const mirrorRect = mirror.getBoundingClientRect();
+    const markerRect = marker.getBoundingClientRect();
+    const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) || 16;
+    const left = editorRect.left + markerRect.left - mirrorRect.left - this.element.scrollLeft;
+    const top = editorRect.top + markerRect.top - mirrorRect.top - this.element.scrollTop;
+    mirror.remove();
+
+    return new ownerWindow.DOMRect(left, top, 1, Math.max(1, markerRect.height || lineHeight));
+  }
+
+  private positionFloatingElement(element: HTMLElement, anchor: DOMRect, gap: number) {
+    const margin = 8;
+    const rect = element.getBoundingClientRect();
+    const viewportWidth = window.innerWidth;
+    const viewportHeight = window.innerHeight;
+    let left = anchor.left;
+    let top = anchor.bottom + gap;
+
+    if (left + rect.width > viewportWidth - margin) {
+      left = viewportWidth - margin - rect.width;
+    }
+    left = Math.max(margin, left);
+
+    if (top + rect.height > viewportHeight - margin) {
+      top = anchor.top - rect.height - gap;
+    }
+    if (top < margin) {
+      top = Math.max(margin, Math.min(anchor.bottom + gap, viewportHeight - margin - rect.height));
+    }
+
+    element.style.left = `${left}px`;
+    element.style.top = `${top}px`;
+  }
 
   private listen(events: string[], listener: () => void) {
     events.forEach((event) => this.element.addEventListener(event, listener));
