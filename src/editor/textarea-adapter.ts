@@ -34,6 +34,20 @@ function ensureStyles(ownerDocument: Document) {
       border-radius: 3px;
     }
 
+    .queryhouse-line-numbers {
+      position: fixed;
+      z-index: 2147483646;
+      pointer-events: none;
+      overflow: hidden;
+      box-sizing: border-box;
+      text-align: right;
+      color: #6b7280;
+      background: rgba(248, 250, 252, 0.94);
+      border-right: 1px solid rgba(148, 163, 184, 0.45);
+      user-select: none;
+      white-space: pre;
+    }
+
     .queryhouse-diagnostics {
       position: fixed;
       z-index: 2147483646;
@@ -57,22 +71,33 @@ export class TextareaAdapter implements EditorAdapter {
   private currentQueryRange: TextRange | null = null;
   private readonly diagnostics: HTMLDivElement;
   private readonly highlightLayer: HTMLDivElement;
+  private readonly lineNumbers: HTMLDivElement;
+  private readonly originalPaddingLeft: string;
+  private readonly basePaddingLeftPx: number;
   private disposers: Array<() => void> = [];
+  private lineNumberWidth = 0;
 
   constructor(element: HTMLTextAreaElement) {
     this.element = element;
     ensureStyles(element.ownerDocument);
+    const initialStyle = window.getComputedStyle(element);
+    this.originalPaddingLeft = element.style.paddingLeft;
+    this.basePaddingLeftPx = Number.parseFloat(initialStyle.paddingLeft) || 0;
     this.highlightLayer = element.ownerDocument.createElement('div');
     this.highlightLayer.className = 'queryhouse-highlight-layer';
     this.highlightLayer.hidden = true;
+    this.lineNumbers = element.ownerDocument.createElement('div');
+    this.lineNumbers.className = 'queryhouse-line-numbers';
     this.diagnostics = element.ownerDocument.createElement('div');
     this.diagnostics.className = 'queryhouse-diagnostics';
     this.diagnostics.hidden = true;
+    element.ownerDocument.body.append(this.lineNumbers);
     element.ownerDocument.body.append(this.highlightLayer);
     element.ownerDocument.body.append(this.diagnostics);
-    this.listen(['input', 'scroll'], () => this.renderHighlight());
-    window.addEventListener('resize', this.renderHighlight);
-    this.disposers.push(() => window.removeEventListener('resize', this.renderHighlight));
+    this.listen(['input', 'scroll'], this.renderEditorOverlays);
+    window.addEventListener('resize', this.renderEditorOverlays);
+    this.disposers.push(() => window.removeEventListener('resize', this.renderEditorOverlays));
+    this.renderEditorOverlays();
   }
 
   getText() {
@@ -118,7 +143,7 @@ export class TextareaAdapter implements EditorAdapter {
     } else {
       delete this.element.dataset.queryhouseCurrentQuery;
     }
-    this.renderHighlight();
+    this.renderEditorOverlays();
   }
 
   setDiagnostics(messages: string[]) {
@@ -138,8 +163,54 @@ export class TextareaAdapter implements EditorAdapter {
     this.disposers.forEach((dispose) => dispose());
     this.disposers = [];
     this.element.classList.remove('queryhouse-active-editor');
+    this.element.style.paddingLeft = this.originalPaddingLeft;
+    this.lineNumbers.remove();
     this.highlightLayer.remove();
     this.diagnostics.remove();
+  }
+
+  private renderEditorOverlays = () => {
+    this.renderLineNumbers();
+    this.renderHighlight();
+  };
+
+  private renderLineNumbers() {
+    const lineCount = Math.max(1, this.element.value.split('\n').length);
+    this.updateLineNumberPadding(lineCount);
+
+    const rect = this.element.getBoundingClientRect();
+    const style = window.getComputedStyle(this.element);
+    const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
+    const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
+    const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
+    const numbers = Array.from({ length: lineCount }, (_, index) => String(index + 1)).join('\n');
+
+    Object.assign(this.lineNumbers.style, {
+      left: `${rect.left + borderLeft}px`,
+      top: `${rect.top + borderTop}px`,
+      width: `${this.lineNumberWidth}px`,
+      height: `${Math.max(0, rect.height - borderTop - borderBottom)}px`,
+      paddingTop: style.paddingTop,
+      paddingRight: '8px',
+      font: style.font,
+      lineHeight: style.lineHeight,
+      letterSpacing: style.letterSpacing
+    });
+
+    if (this.lineNumbers.textContent !== numbers) {
+      this.lineNumbers.textContent = numbers;
+    }
+    this.lineNumbers.scrollTop = this.element.scrollTop;
+  }
+
+  private updateLineNumberPadding(lineCount: number) {
+    const width = Math.max(36, String(lineCount).length * 8 + 22);
+    if (width === this.lineNumberWidth) {
+      return;
+    }
+
+    this.lineNumberWidth = width;
+    this.element.style.paddingLeft = `${this.basePaddingLeftPx + width}px`;
   }
 
   private renderHighlight = () => {
