@@ -17,4 +17,16 @@ describe('runLocalDiagnostics', () => {
   it('warns about missing semicolons', () => {
     expect(runLocalDiagnostics('SELECT 1').some((diagnostic) => diagnostic.message.includes('trailing semicolon'))).toBe(true);
   });
+
+  it('warns when FINAL appears before a table alias', () => {
+    const diagnostics = runLocalDiagnostics('SELECT x FROM mytable FINAL AS t;');
+
+    expect(diagnostics.some((diagnostic) => diagnostic.message.includes('FINAL must come after the table alias'))).toBe(true);
+  });
+
+  it('allows FINAL after a table alias', () => {
+    const diagnostics = runLocalDiagnostics('SELECT x FROM mytable AS t FINAL;');
+
+    expect(diagnostics.some((diagnostic) => diagnostic.message.includes('FINAL must come after the table alias'))).toBe(false);
+  });
 });

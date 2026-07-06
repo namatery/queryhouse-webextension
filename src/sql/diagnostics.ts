@@ -35,10 +35,18 @@ export function runLocalDiagnostics(sql: string): Diagnostic[] {
     });
   }
 
-  if (/,\s*(from|where|group\s+by|order\s+by|limit|settings|;|$)/i.test(sql)) {
+  if (/,\s*(from|prewhere|where|group\s+by|having|qualify|order\s+by|limit|settings|format|;|$)/i.test(sql)) {
     diagnostics.push({
       severity: 'warning',
       message: 'Possible dangling comma before a clause or statement end.',
+      source: 'local'
+    });
+  }
+
+  if (/\b(from|join)\s+[\w.`"]+\s+final\s+as\s+[\w`"]+/i.test(sql)) {
+    diagnostics.push({
+      severity: 'error',
+      message: 'ClickHouse FINAL must come after the table alias, for example: FROM table AS t FINAL.',
       source: 'local'
     });
   }

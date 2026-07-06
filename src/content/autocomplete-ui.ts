@@ -26,7 +26,7 @@ export function createAutocompleteController(ownerDocument: Document): Autocompl
         const row = ownerDocument.createElement('button');
         row.type = 'button';
         row.className = index === selected ? 'is-selected' : '';
-        row.innerHTML = `<span>${escapeHtml(item.label)}</span><small>${item.kind}</small>`;
+        row.innerHTML = `<span>${escapeHtml(item.label)}</span><small>${escapeHtml(item.detail ?? item.kind)}</small>`;
         row.addEventListener('mousedown', (event) => {
           event.preventDefault();
           pick?.(item);
@@ -140,6 +140,7 @@ function ensureStyles(ownerDocument: Document) {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      gap: 12px;
       width: 100%;
       min-height: 28px;
       border: 0;
@@ -160,6 +161,9 @@ function ensureStyles(ownerDocument: Document) {
     .queryhouse-autocomplete small {
       color: #5f6368;
       font-size: 11px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
     }
   `;
   ownerDocument.head.append(style);
