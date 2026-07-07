@@ -125,19 +125,51 @@ function findStatementTerminator(sql: string, statement: TextRange) {
 }
 
 function pushStatement(statements: SqlStatement[], sql: string, rawStart: number, rawEnd: number) {
-  const text = sql.slice(rawStart, rawEnd);
-  const leading = text.search(/\S/);
-  if (leading === -1) {
+  const start = findExecutableStart(sql, rawStart, rawEnd);
+  if (start === null) {
     return;
   }
 
+  const text = sql.slice(start, rawEnd);
   const trailingMatch = /\s*$/.exec(text);
   const trailing = trailingMatch ? trailingMatch[0].length : 0;
-  const start = rawStart + leading;
   const end = rawEnd - trailing;
   statements.push({
     start,
     end,
     text: sql.slice(start, end)
   });
+}
+
+function findExecutableStart(sql: string, rawStart: number, rawEnd: number) {
+  for (let index = rawStart; index < rawEnd; index += 1) {
+    const char = sql[index];
+    const next = sql[index + 1];
+
+    if (/\s/.test(char ?? '')) {
+      continue;
+    }
+
+    if (char === '-' && next === '-') {
+      const newline = sql.indexOf('\n', index + 2);
+      if (newline === -1 || newline >= rawEnd) {
+        return null;
+      }
+      index = newline;
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      const close = sql.indexOf('*/', index + 2);
+      if (close === -1 || close + 2 > rawEnd) {
+        return null;
+      }
+      index = close + 1;
+      continue;
+    }
+
+    return index;
+  }
+
+  return null;
 }

@@ -16,6 +16,34 @@ describe('splitSqlStatements', () => {
     expect(statements[0]?.text).toBe("SELECT ';'");
     expect(statements[1]?.text).toBe('SELECT 2 /* ; */');
   });
+
+  it('skips leading line comments before statement text', () => {
+    const sql = '-- user: 1231\n\nSELECT * FROM user_users;';
+
+    expect(splitSqlStatements(sql)).toEqual([
+      {
+        start: sql.indexOf('SELECT'),
+        end: sql.indexOf(';'),
+        text: 'SELECT * FROM user_users'
+      }
+    ]);
+  });
+
+  it('skips leading block comments before statement text', () => {
+    const sql = '/* user: 1231 */\nSELECT * FROM user_users;';
+
+    expect(splitSqlStatements(sql)).toEqual([
+      {
+        start: sql.indexOf('SELECT'),
+        end: sql.indexOf(';'),
+        text: 'SELECT * FROM user_users'
+      }
+    ]);
+  });
+
+  it('ignores comment-only text', () => {
+    expect(splitSqlStatements('-- user: 1231\n/* note */')).toEqual([]);
+  });
 });
 
 describe('findCurrentStatement', () => {

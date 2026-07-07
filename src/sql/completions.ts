@@ -136,6 +136,10 @@ const COMPLETIONS: CompletionItem[] = [
 ];
 
 export function getCompletions(sql: string, cursor: number): CompletionResult | null {
+  if (isCursorInsideComment(sql, cursor)) {
+    return null;
+  }
+
   const range = findReplacementRange(sql, cursor);
   const prefix = sql.slice(range.start, range.end);
   if (prefix.length === 0) {
@@ -148,6 +152,77 @@ export function getCompletions(sql: string, cursor: number): CompletionResult | 
     .slice(0, 12);
 
   return items.length > 0 ? { range, items } : null;
+}
+
+function isCursorInsideComment(sql: string, cursor: number) {
+  let state: 'normal' | 'single-quote' | 'double-quote' | 'backtick' | 'line-comment' | 'block-comment' = 'normal';
+
+  for (let index = 0; index < cursor; index += 1) {
+    const char = sql[index];
+    const next = sql[index + 1];
+
+    if (state === 'line-comment') {
+      if (char === '\n') state = 'normal';
+      continue;
+    }
+
+    if (state === 'block-comment') {
+      if (char === '*' && next === '/') {
+        state = 'normal';
+        index += 1;
+      }
+      continue;
+    }
+
+    if (state === 'single-quote') {
+      if (char === '\\') {
+        index += 1;
+      } else if (char === "'" && next === "'") {
+        index += 1;
+      } else if (char === "'") {
+        state = 'normal';
+      }
+      continue;
+    }
+
+    if (state === 'double-quote') {
+      if (char === '\\') {
+        index += 1;
+      } else if (char === '"' && next === '"') {
+        index += 1;
+      } else if (char === '"') {
+        state = 'normal';
+      }
+      continue;
+    }
+
+    if (state === 'backtick') {
+      if (char === '`') state = 'normal';
+      continue;
+    }
+
+    if (char === '-' && next === '-') {
+      state = 'line-comment';
+      index += 1;
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      state = 'block-comment';
+      index += 1;
+      continue;
+    }
+
+    if (char === "'") {
+      state = 'single-quote';
+    } else if (char === '"') {
+      state = 'double-quote';
+    } else if (char === '`') {
+      state = 'backtick';
+    }
+  }
+
+  return state === 'line-comment' || state === 'block-comment';
 }
 
 function findReplacementRange(sql: string, cursor: number): TextRange {
