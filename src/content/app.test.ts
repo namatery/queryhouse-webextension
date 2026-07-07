@@ -1,9 +1,14 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createQueryHouse } from './app';
 
 describe('createQueryHouse autocomplete key handling', () => {
   afterEach(() => {
     document.body.replaceChildren();
+    vi.restoreAllMocks();
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: undefined
+    });
   });
 
   it('prevents the host editor from also handling Tab after accepting a suggestion', () => {
@@ -79,6 +84,42 @@ describe('createQueryHouse autocomplete key handling', () => {
 
     expect(queryHouseRuns).toHaveLength(2);
     expect(submittedSql).toBe('SELECT 2;');
+    expect(textarea.value).toBe(originalSql);
+
+    queryHouse.destroy();
+  });
+
+  it('copies a completed statement without focusing that statement first', async () => {
+    const textarea = document.createElement('textarea');
+    const originalSql = 'SELECT 1;\nSELECT 2;';
+    const writeText = vi.fn(() => Promise.resolve());
+
+    Object.defineProperty(window.navigator, 'clipboard', {
+      configurable: true,
+      value: { writeText }
+    });
+
+    textarea.placeholder = 'SQL query';
+    textarea.rows = 8;
+    textarea.value = originalSql;
+    textarea.setSelectionRange(0, 0);
+    document.body.append(textarea);
+
+    const queryHouse = createQueryHouse(document, {
+      highlightCurrentQuery: true,
+      autocomplete: false,
+      localChecks: false,
+      parserValidation: false,
+      runCompletedStatement: true
+    });
+    queryHouse.mount();
+
+    const copyButtons = document.querySelectorAll<HTMLButtonElement>('.queryhouse-copy-statement');
+    copyButtons[1]?.click();
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(copyButtons).toHaveLength(2);
+    expect(writeText).toHaveBeenCalledWith('SELECT 2;');
     expect(textarea.value).toBe(originalSql);
 
     queryHouse.destroy();

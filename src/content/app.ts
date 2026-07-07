@@ -88,6 +88,7 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
           id: `${statement.start}:${statement.end}`,
           anchor: adapter?.getTextOffsetRect(statement.start) ?? new DOMRect(),
           clipRect,
+          onCopy: () => copyTextToClipboard(ownerDocument, executableSql),
           onRun: () => {
             if (!adapter?.runStatement(executableSql)) {
               adapter?.setDiagnostics(['QueryHouse could not find the ClickHouse Run button for this editor.']);
@@ -182,4 +183,34 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
   }
 
   return { mount, destroy };
+}
+
+async function copyTextToClipboard(ownerDocument: Document, text: string) {
+  const clipboard = ownerDocument.defaultView?.navigator.clipboard;
+  if (clipboard?.writeText) {
+    let copied = false;
+    try {
+      await clipboard.writeText(text);
+      copied = true;
+    } catch {
+      copied = false;
+    }
+    if (copied) {
+      return;
+    }
+  }
+
+  const textarea = ownerDocument.createElement('textarea');
+  textarea.value = text;
+  textarea.setAttribute('readonly', '');
+  Object.assign(textarea.style, {
+    position: 'fixed',
+    left: '-10000px',
+    top: '0',
+    opacity: '0'
+  });
+  ownerDocument.body.append(textarea);
+  textarea.select();
+  ownerDocument.execCommand?.('copy');
+  textarea.remove();
 }

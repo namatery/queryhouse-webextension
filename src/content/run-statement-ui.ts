@@ -7,6 +7,7 @@ export type RunStatementAction = {
   anchor: DOMRect;
   clipRect?: DOMRect;
   onRun: () => void;
+  onCopy?: () => void | Promise<void>;
 };
 
 export type RunStatementController = {
@@ -30,26 +31,53 @@ export function createRunStatementController(ownerDocument: Document): RunStatem
     setActions(actions) {
       clear();
       actions.forEach((action) => {
-        const button = ownerDocument.createElement('button');
-        button.type = 'button';
-        button.className = 'queryhouse-run-statement';
-        button.dataset.queryhouseStatementId = action.id;
-        button.innerHTML = [
+        const runButton = ownerDocument.createElement('button');
+        runButton.type = 'button';
+        runButton.className = 'queryhouse-statement-action queryhouse-run-statement';
+        runButton.dataset.queryhouseStatementId = action.id;
+        runButton.innerHTML = [
           '<span class="queryhouse-run-statement-icon" aria-hidden="true"></span>',
           '<span class="queryhouse-run-statement-run">Run</span>',
         ].join('');
-        button.addEventListener('mousedown', (event) => event.preventDefault());
-        button.addEventListener('click', (event) => {
+        runButton.addEventListener('mousedown', (event) => event.preventDefault());
+        runButton.addEventListener('click', (event) => {
           event.preventDefault();
           event.stopPropagation();
           action.onRun();
         });
-        ownerDocument.body.append(button);
-        applyThemeClass(ownerDocument, button);
-        button.style.visibility = 'hidden';
-        positionButton(button, action);
-        button.style.visibility = '';
-        buttons.push(button);
+
+        const actionButtons = [runButton];
+        let copyButton: HTMLButtonElement | null = null;
+        if (action.onCopy) {
+          copyButton = ownerDocument.createElement('button');
+          copyButton.type = 'button';
+          copyButton.className = 'queryhouse-statement-action queryhouse-copy-statement';
+          copyButton.dataset.queryhouseStatementId = action.id;
+          copyButton.title = 'Copy statement';
+          copyButton.setAttribute('aria-label', 'Copy statement');
+          copyButton.innerHTML = [
+            '<span class="queryhouse-copy-statement-icon" aria-hidden="true"></span>',
+            '<span class="queryhouse-copy-statement-copy">Copy</span>',
+          ].join('');
+          copyButton.addEventListener('mousedown', (event) => event.preventDefault());
+          copyButton.addEventListener('click', (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            void Promise.resolve(action.onCopy?.()).catch(() => undefined);
+          });
+          actionButtons.push(copyButton);
+        }
+
+        actionButtons.forEach((button) => {
+          ownerDocument.body.append(button);
+          applyThemeClass(ownerDocument, button);
+          button.style.visibility = 'hidden';
+        });
+        positionButtons(runButton, copyButton, action);
+        actionButtons.forEach((button) => {
+          button.style.visibility = '';
+        });
+        buttons.push(...actionButtons);
       });
     },
     hide() {
@@ -66,21 +94,28 @@ function applyThemeClass(ownerDocument: Document, button: HTMLElement) {
   button.classList.toggle('is-dark', getDocumentColorMode(ownerDocument) === 'dark');
 }
 
-function positionButton(button: HTMLElement, action: RunStatementAction) {
+function positionButtons(runButton: HTMLElement, copyButton: HTMLElement | null, action: RunStatementAction) {
   const margin = 8;
-  const rect = button.getBoundingClientRect();
+  const buttonGap = 4;
+  const statementGap = 3;
+  const runRect = runButton.getBoundingClientRect();
+  const copyRect = copyButton?.getBoundingClientRect();
   const anchor = action.anchor;
   if (!isAnchorVisibleInViewport(anchor, margin) || (action.clipRect && !rectsIntersect(anchor, action.clipRect))) {
-    button.hidden = true;
+    runButton.hidden = true;
+    if (copyButton) copyButton.hidden = true;
     return;
   }
 
-  button.hidden = false;
+  runButton.hidden = false;
+  if (copyButton) copyButton.hidden = false;
+  const groupWidth = runRect.width + (copyRect ? buttonGap + copyRect.width : 0);
+  const groupHeight = Math.max(runRect.height, copyRect?.height ?? 0);
   let left = anchor.left;
-  let top = anchor.top - Math.max(rect.height, (anchor.height + rect.height) / 2);
+  let top = anchor.top - Math.max(groupHeight, (anchor.height + groupHeight) / 2) - statementGap;
 
-  if (left + rect.width > window.innerWidth - margin) {
-    left = window.innerWidth - margin - rect.width;
+  if (left + groupWidth > window.innerWidth - margin) {
+    left = window.innerWidth - margin - groupWidth;
   }
   if (left < margin) {
     left = margin;
@@ -90,8 +125,12 @@ function positionButton(button: HTMLElement, action: RunStatementAction) {
     top = minTop;
   }
 
-  button.style.left = `${left}px`;
-  button.style.top = `${top}px`;
+  runButton.style.left = `${left}px`;
+  runButton.style.top = `${top}px`;
+  if (copyButton) {
+    copyButton.style.left = `${left + runRect.width + buttonGap}px`;
+    copyButton.style.top = `${top}px`;
+  }
 }
 
 function isAnchorVisibleInViewport(anchor: DOMRect, margin: number) {
@@ -110,7 +149,7 @@ function ensureStyles(ownerDocument: Document) {
   const style = ownerDocument.createElement('style');
   style.id = STYLE_ID;
   style.textContent = `
-    .queryhouse-run-statement {
+    .queryhouse-statement-action {
       position: fixed;
       z-index: 2147483647;
       display: inline-flex;
@@ -127,19 +166,19 @@ function ensureStyles(ownerDocument: Document) {
       cursor: pointer;
     }
 
-    .queryhouse-run-statement:hover {
+    .queryhouse-statement-action:hover {
       color: #111827;
       background: rgba(248, 250, 252, 0.98);
     }
 
-    .queryhouse-run-statement.is-dark {
+    .queryhouse-statement-action.is-dark {
       border-color: rgba(248, 250, 252, 0.16);
       color: #f8fafc;
       background: rgba(15, 23, 42, 0.72);
       box-shadow: 0 1px 3px rgba(15, 23, 42, 0.28);
     }
 
-    .queryhouse-run-statement.is-dark:hover {
+    .queryhouse-statement-action.is-dark:hover {
       color: #ffffff;
       background: rgba(15, 23, 42, 0.88);
     }
@@ -153,6 +192,32 @@ function ensureStyles(ownerDocument: Document) {
     }
 
     .queryhouse-run-statement-run {
+      color: currentColor;
+    }
+
+    .queryhouse-copy-statement-icon {
+      position: relative;
+      width: 9px;
+      height: 9px;
+      box-sizing: border-box;
+      border: 1px solid currentColor;
+      border-radius: 1px;
+    }
+
+    .queryhouse-copy-statement-icon::before {
+      content: "";
+      position: absolute;
+      left: -3px;
+      top: -3px;
+      width: 7px;
+      height: 7px;
+      box-sizing: border-box;
+      border: 1px solid currentColor;
+      border-radius: 1px;
+      background: inherit;
+    }
+
+    .queryhouse-copy-statement-copy {
       color: currentColor;
     }
 
