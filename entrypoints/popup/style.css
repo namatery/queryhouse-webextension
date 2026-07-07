@@ -21,6 +21,27 @@ h1 {
 p {
   margin: 0 0 14px;
   color: #5f6368;
+  overflow-wrap: anywhere;
+}
+
+button {
+  width: 100%;
+  min-height: 34px;
+  margin: 0 0 14px;
+  border: 1px solid #202124;
+  border-radius: 6px;
+  background: #202124;
+  color: #ffffff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+button:disabled {
+  border-color: #dadce0;
+  background: #f1f3f4;
+  color: #80868b;
+  cursor: not-allowed;
 }
 
 dl {
@@ -42,4 +63,6 @@ dt {
 dd {
   margin: 0;
   color: #137333;
+  text-align: right;
+  overflow-wrap: anywhere;
 }

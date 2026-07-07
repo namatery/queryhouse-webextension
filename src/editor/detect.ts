@@ -1,19 +1,12 @@
 import { TextareaAdapter } from './textarea-adapter';
 import type { EditorAdapter } from './types';
 
-const SUPPORTED_CLICKHOUSE_HOSTS = new Set(['localhost', '127.0.0.1', 'clickhouse.hamtadns.com']);
-
-export function isLocalClickHousePlayUrl(location: Pick<Location, 'hostname' | 'pathname'>) {
-  if (!SUPPORTED_CLICKHOUSE_HOSTS.has(location.hostname)) {
-    return false;
-  }
-
-  const path = location.pathname.toLowerCase();
-  return path === '/' || path.includes('play') || path.includes('query') || path.includes('sql');
+export function isInjectablePageUrl(location: Pick<Location, 'protocol'>) {
+  return location.protocol === 'http:' || location.protocol === 'https:';
 }
 
 export function detectSqlEditor(ownerDocument: Document): EditorAdapter | null {
-  if (!isLocalClickHousePlayUrl(ownerDocument.location)) {
+  if (!isInjectablePageUrl(ownerDocument.location)) {
     return null;
   }
 

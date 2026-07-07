@@ -1,17 +1,17 @@
 import { describe, expect, it } from 'vitest';
-import { detectSqlEditor, isLocalClickHousePlayUrl } from './detect';
+import { detectSqlEditor, isInjectablePageUrl } from './detect';
 
-describe('isLocalClickHousePlayUrl', () => {
-  it('accepts local ClickHouse Play-like URLs', () => {
-    expect(isLocalClickHousePlayUrl({ hostname: 'localhost', pathname: '/play' } as Location)).toBe(true);
+describe('isInjectablePageUrl', () => {
+  it('accepts http pages', () => {
+    expect(isInjectablePageUrl({ protocol: 'http:' } as Location)).toBe(true);
   });
 
-  it('accepts the hosted ClickHouse web interface', () => {
-    expect(isLocalClickHousePlayUrl({ hostname: 'clickhouse.hamtadns.com', pathname: '/' } as Location)).toBe(true);
+  it('accepts https pages', () => {
+    expect(isInjectablePageUrl({ protocol: 'https:' } as Location)).toBe(true);
   });
 
-  it('rejects non-local hosts', () => {
-    expect(isLocalClickHousePlayUrl({ hostname: 'example.com', pathname: '/play' } as Location)).toBe(false);
+  it('rejects extension pages', () => {
+    expect(isInjectablePageUrl({ protocol: 'chrome-extension:' } as Location)).toBe(false);
   });
 });
 
