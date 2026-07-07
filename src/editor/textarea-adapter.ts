@@ -199,6 +199,13 @@ export class TextareaAdapter implements EditorAdapter {
     return this.getTextOffsetRectInternal(offset);
   }
 
+  refreshLayout() {
+    this.renderEditorOverlays();
+    if (!this.diagnostics.hidden) {
+      this.positionFloatingElement(this.diagnostics, this.getAnchorRect(), 6);
+    }
+  }
+
   toggleLineComment() {
     const value = this.element.value;
     const selection = this.getSelection();

@@ -28,6 +28,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
 export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = DEFAULT_FLAGS) {
   let adapter: EditorAdapter | null = null;
   let validationTimer: number | undefined;
+  const ownerWindow = ownerDocument.defaultView ?? window;
   const autocomplete = createAutocompleteController(ownerDocument);
   const runStatement = createRunStatementController(ownerDocument);
   const disposers: Array<() => void> = [];
@@ -49,6 +50,12 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
     disposers.push(adapter.onCursor(refresh));
     adapter.element.addEventListener('keydown', handleKeydown, true);
     disposers.push(() => adapter?.element.removeEventListener('keydown', handleKeydown, true));
+    adapter.element.addEventListener('scroll', refreshFloatingUi);
+    disposers.push(() => adapter?.element.removeEventListener('scroll', refreshFloatingUi));
+    ownerDocument.addEventListener('scroll', refreshFloatingUi, true);
+    disposers.push(() => ownerDocument.removeEventListener('scroll', refreshFloatingUi, true));
+    ownerWindow.addEventListener('resize', refreshFloatingUi);
+    disposers.push(() => ownerWindow.removeEventListener('resize', refreshFloatingUi));
     refresh();
   }
 
@@ -68,6 +75,7 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
 
     const sql = adapter.getText();
     const statements = splitSqlStatements(sql);
+    const clipRect = adapter.element.getBoundingClientRect();
 
     const actions = statements.flatMap((statement) => {
       const executableSql = getExecutableStatementText(sql, statement);
@@ -79,6 +87,7 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
         {
           id: `${statement.start}:${statement.end}`,
           anchor: adapter?.getTextOffsetRect(statement.start) ?? new DOMRect(),
+          clipRect,
           onRun: () => {
             if (!adapter?.runStatement(executableSql)) {
               adapter?.setDiagnostics(['QueryHouse could not find the ClickHouse Run button for this editor.']);
@@ -116,13 +125,23 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
     });
   }
 
+  function refreshFloatingUi() {
+    if (!adapter) {
+      return;
+    }
+
+    adapter.refreshLayout();
+    refreshRunStatementActions();
+    refreshAutocomplete();
+  }
+
   function scheduleValidation() {
     if (!adapter) {
       return;
     }
 
-    window.clearTimeout(validationTimer);
-    validationTimer = window.setTimeout(async () => {
+    ownerWindow.clearTimeout(validationTimer);
+    validationTimer = ownerWindow.setTimeout(async () => {
       if (!adapter) {
         return;
       }
@@ -153,7 +172,7 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
   }
 
   function destroy() {
-    window.clearTimeout(validationTimer);
+    ownerWindow.clearTimeout(validationTimer);
     disposers.forEach((dispose) => dispose());
     disposers.length = 0;
     runStatement.destroy();

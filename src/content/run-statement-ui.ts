@@ -5,6 +5,7 @@ const STYLE_ID = 'queryhouse-run-statement-style';
 export type RunStatementAction = {
   id: string;
   anchor: DOMRect;
+  clipRect?: DOMRect;
   onRun: () => void;
 };
 
@@ -69,6 +70,12 @@ function positionButton(button: HTMLElement, action: RunStatementAction) {
   const margin = 8;
   const rect = button.getBoundingClientRect();
   const anchor = action.anchor;
+  if (!isAnchorVisibleInViewport(anchor, margin) || (action.clipRect && !rectsIntersect(anchor, action.clipRect))) {
+    button.hidden = true;
+    return;
+  }
+
+  button.hidden = false;
   let left = anchor.left;
   let top = anchor.top - Math.max(rect.height, (anchor.height + rect.height) / 2);
 
@@ -78,12 +85,21 @@ function positionButton(button: HTMLElement, action: RunStatementAction) {
   if (left < margin) {
     left = margin;
   }
-  if (top < margin) {
-    top = margin;
+  const minTop = Math.max(margin, action.clipRect?.top ?? margin);
+  if (top < minTop) {
+    top = minTop;
   }
 
   button.style.left = `${left}px`;
   button.style.top = `${top}px`;
+}
+
+function isAnchorVisibleInViewport(anchor: DOMRect, margin: number) {
+  return anchor.bottom > margin && anchor.top < window.innerHeight - margin && anchor.right > 0 && anchor.left < window.innerWidth;
+}
+
+function rectsIntersect(anchor: DOMRect, clipRect: DOMRect) {
+  return anchor.bottom > clipRect.top && anchor.top < clipRect.bottom && anchor.right > clipRect.left && anchor.left < clipRect.right;
 }
 
 function ensureStyles(ownerDocument: Document) {

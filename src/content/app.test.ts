@@ -106,6 +106,35 @@ describe('createQueryHouse autocomplete key handling', () => {
     queryHouse.destroy();
   });
 
+  it('refreshes statement actions when the page scrolls', () => {
+    const textarea = document.createElement('textarea');
+    let editorTop = 80;
+
+    textarea.placeholder = 'SQL query';
+    textarea.rows = 8;
+    textarea.value = 'SELECT 1;';
+    textarea.getBoundingClientRect = () => new DOMRect(12, editorTop, 240, 120);
+    document.body.append(textarea);
+
+    const queryHouse = createQueryHouse(document, {
+      highlightCurrentQuery: true,
+      autocomplete: false,
+      localChecks: false,
+      parserValidation: false,
+      runCompletedStatement: true
+    });
+    queryHouse.mount();
+
+    expect(document.querySelector<HTMLButtonElement>('.queryhouse-run-statement')?.hidden).toBe(false);
+
+    editorTop = -120;
+    document.dispatchEvent(new Event('scroll'));
+
+    expect(document.querySelector<HTMLButtonElement>('.queryhouse-run-statement')?.hidden).toBe(true);
+
+    queryHouse.destroy();
+  });
+
   it('comments selected lines on Ctrl+/', () => {
     const textarea = document.createElement('textarea');
     textarea.placeholder = 'SQL query';
