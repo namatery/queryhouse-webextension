@@ -45,6 +45,37 @@ describe('createQueryHouse autocomplete key handling', () => {
     queryHouse.destroy();
   });
 
+  it('adds a trailing space after accepting a keyword with Enter', () => {
+    const textarea = document.createElement('textarea');
+    textarea.placeholder = 'SQL query';
+    textarea.rows = 8;
+    textarea.value = 'SELE';
+    textarea.setSelectionRange(4, 4);
+    document.body.append(textarea);
+
+    const queryHouse = createQueryHouse(document, {
+      highlightCurrentQuery: false,
+      autocomplete: true,
+      localChecks: false,
+      parserValidation: false,
+      runCompletedStatement: false
+    });
+    queryHouse.mount();
+
+    const enterEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      bubbles: true,
+      cancelable: true
+    });
+    textarea.dispatchEvent(enterEvent);
+
+    expect(textarea.value).toBe('SELECT ');
+    expect(textarea.selectionStart).toBe(7);
+    expect(enterEvent.defaultPrevented).toBe(true);
+
+    queryHouse.destroy();
+  });
+
   it('runs a completed statement without focusing that statement first', async () => {
     const form = document.createElement('form');
     const textarea = document.createElement('textarea');

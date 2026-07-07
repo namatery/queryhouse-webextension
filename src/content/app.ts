@@ -117,8 +117,10 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
       return;
     }
 
-    autocomplete.show(result, adapter.getAnchorRect(), (item) => {
-      adapter?.replaceRange(result.range, item.insertText);
+    autocomplete.show(result, adapter.getAnchorRect(), (item, trigger) => {
+      const nextChar = adapter?.getText()[result.range.end] ?? '';
+      const trailingSpace = trigger === 'enter' && item.kind === 'keyword' && !/\s/.test(nextChar) ? ' ' : '';
+      adapter?.replaceRange(result.range, `${item.insertText}${trailingSpace}`);
       autocomplete.hide();
       refreshHighlight();
       scheduleValidation();
