@@ -50,7 +50,7 @@ Notes:
 - `src/content/autocomplete-ui.ts` renders the completion popup as host-page DOM.
 - `src/content/run-statement-ui.ts` renders per-statement Run buttons as host-page DOM.
 - `src/editor/detect.ts` gates supported URLs and chooses the best textarea candidate.
-- `src/editor/textarea-adapter.ts` adapts textarea behavior, overlays line numbers and syntax highlighting, dispatches host input events, toggles comments, and runs selected statements through the host page Run button.
+- `src/editor/textarea-adapter.ts` adapts textarea behavior, overlays syntax highlighting, dispatches host input events, toggles comments, and runs selected statements through the host page Run button.
 - `src/editor/types.ts` defines the editor adapter contract.
 - `src/sql/completions.ts` stores static ClickHouse completions.
 - `src/sql/diagnostics.ts` runs lightweight local SQL diagnostics.
@@ -87,7 +87,7 @@ Add or update focused tests when changing behavior.
 - Local diagnostics changes: update `src/sql/diagnostics.test.ts` for both warning/error cases and allowed valid SQL.
 - Parser integration changes: update `src/sql/parser-validator.test.ts`.
 - Completion changes: update `src/sql/completions.test.ts` for matching, ranking, and ClickHouse-specific terms.
-- Editor adapter changes: update `src/editor/textarea-adapter.test.ts` for DOM cleanup, line numbering, syntax overlays, comment toggling, selection preservation, and host input events.
+- Editor adapter changes: update `src/editor/textarea-adapter.test.ts` for DOM cleanup, syntax overlays, comment toggling, selection preservation, and host input events.
 - App orchestration or shortcut changes: update `src/content/app.test.ts`.
 - URL or editor detection changes: update `src/editor/detect.test.ts`.
 

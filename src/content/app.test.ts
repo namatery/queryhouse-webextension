@@ -84,7 +84,7 @@ describe('createQueryHouse autocomplete key handling', () => {
     queryHouse.destroy();
   });
 
-  it('marks blank spacer rows before later statements as unnumbered action rows', () => {
+  it('renders statement actions without a line-number gutter', () => {
     const textarea = document.createElement('textarea');
     textarea.placeholder = 'SQL query';
     textarea.rows = 8;
@@ -100,7 +100,8 @@ describe('createQueryHouse autocomplete key handling', () => {
     });
     queryHouse.mount();
 
-    expect(document.querySelector('.queryhouse-line-numbers')?.textContent).toBe('\n1\n\n2');
+    expect(document.querySelector('.queryhouse-line-numbers')).toBeNull();
+    expect(document.querySelectorAll('.queryhouse-run-statement')).toHaveLength(2);
 
     queryHouse.destroy();
   });
