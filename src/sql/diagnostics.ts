@@ -35,6 +35,10 @@ export function runLocalDiagnostics(sql: string): Diagnostic[] {
     });
   }
 
+  if (!hasExecutableSql(sql)) {
+    return diagnostics;
+  }
+
   if (/,\s*(from|prewhere|where|group\s+by|having|qualify|order\s+by|limit|settings|format|;|$)/i.test(sql)) {
     diagnostics.push({
       severity: 'warning',
@@ -59,7 +63,7 @@ export function runLocalDiagnostics(sql: string): Diagnostic[] {
     });
   }
 
-  if (!/[;]\s*$/.test(sql.trim())) {
+  if (getLastExecutableCharacter(sql) !== ';') {
     diagnostics.push({
       severity: 'warning',
       message: 'Statement is missing a trailing semicolon.',
@@ -68,6 +72,89 @@ export function runLocalDiagnostics(sql: string): Diagnostic[] {
   }
 
   return diagnostics;
+}
+
+function hasExecutableSql(sql: string) {
+  return getLastExecutableCharacter(sql) !== null;
+}
+
+function getLastExecutableCharacter(sql: string) {
+  let state: 'normal' | 'single-quote' | 'double-quote' | 'backtick' | 'line-comment' | 'block-comment' = 'normal';
+  let last: string | null = null;
+
+  for (let index = 0; index < sql.length; index += 1) {
+    const char = sql[index];
+    const next = sql[index + 1];
+
+    if (state === 'line-comment') {
+      if (char === '\n') state = 'normal';
+      continue;
+    }
+
+    if (state === 'block-comment') {
+      if (char === '*' && next === '/') {
+        state = 'normal';
+        index += 1;
+      }
+      continue;
+    }
+
+    if (state === 'single-quote') {
+      if (char === '\\') {
+        index += 1;
+      } else if (char === "'" && next === "'") {
+        index += 1;
+      } else if (char === "'") {
+        state = 'normal';
+      }
+      if (!/\s/.test(char ?? '')) last = char ?? null;
+      continue;
+    }
+
+    if (state === 'double-quote') {
+      if (char === '\\') {
+        index += 1;
+      } else if (char === '"' && next === '"') {
+        index += 1;
+      } else if (char === '"') {
+        state = 'normal';
+      }
+      if (!/\s/.test(char ?? '')) last = char ?? null;
+      continue;
+    }
+
+    if (state === 'backtick') {
+      if (char === '`') state = 'normal';
+      if (!/\s/.test(char ?? '')) last = char ?? null;
+      continue;
+    }
+
+    if (char === '-' && next === '-') {
+      state = 'line-comment';
+      index += 1;
+      continue;
+    }
+
+    if (char === '/' && next === '*') {
+      state = 'block-comment';
+      index += 1;
+      continue;
+    }
+
+    if (char === "'") {
+      state = 'single-quote';
+    } else if (char === '"') {
+      state = 'double-quote';
+    } else if (char === '`') {
+      state = 'backtick';
+    }
+
+    if (!/\s/.test(char ?? '')) {
+      last = char ?? null;
+    }
+  }
+
+  return last;
 }
 
 function findUnclosedQuote(sql: string): { kind: string; index: number } | null {

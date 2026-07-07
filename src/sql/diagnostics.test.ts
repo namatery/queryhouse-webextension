@@ -18,6 +18,15 @@ describe('runLocalDiagnostics', () => {
     expect(runLocalDiagnostics('SELECT 1').some((diagnostic) => diagnostic.message.includes('trailing semicolon'))).toBe(true);
   });
 
+  it('does not warn about missing semicolons for comment-only text', () => {
+    expect(runLocalDiagnostics('-- SELECT 1').some((diagnostic) => diagnostic.message.includes('trailing semicolon'))).toBe(false);
+    expect(runLocalDiagnostics('/* SELECT 1 */').some((diagnostic) => diagnostic.message.includes('trailing semicolon'))).toBe(false);
+  });
+
+  it('allows trailing comments after a statement semicolon', () => {
+    expect(runLocalDiagnostics('SELECT 1; -- note').some((diagnostic) => diagnostic.message.includes('trailing semicolon'))).toBe(false);
+  });
+
   it('warns when FINAL appears before a table alias', () => {
     const diagnostics = runLocalDiagnostics('SELECT x FROM mytable FINAL AS t;');
 

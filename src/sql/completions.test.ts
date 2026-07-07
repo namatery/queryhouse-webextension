@@ -13,6 +13,26 @@ describe('getCompletions', () => {
     expect(getCompletions('SELECT ', 7)).toBeNull();
   });
 
+  it('does not return suggestions inside a line comment', () => {
+    expect(getCompletions('-- SEL', 6)).toBeNull();
+  });
+
+  it('does not return suggestions inside a block comment', () => {
+    expect(getCompletions('/* SEL */', 6)).toBeNull();
+  });
+
+  it('returns suggestions after a commented line', () => {
+    const sql = '-- note\nSEL';
+
+    expect(getCompletions(sql, sql.length)?.items[0]?.label).toBe('SELECT');
+  });
+
+  it('does not treat comment markers inside strings as comments', () => {
+    const sql = "SELECT '--';\nSEL";
+
+    expect(getCompletions(sql, sql.length)?.items[0]?.label).toBe('SELECT');
+  });
+
   it('includes ClickHouse functions', () => {
     const labels = getCompletions('uniq', 4)?.items.map((item) => item.label);
 
