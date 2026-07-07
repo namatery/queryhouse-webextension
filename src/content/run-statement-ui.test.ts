@@ -64,4 +64,30 @@ describe('createRunStatementController theme handling', () => {
 
     controller.destroy();
   });
+
+  it('renders a copy action beside the run action', () => {
+    const controller = createRunStatementController(document);
+    let copied = false;
+
+    controller.setActions([
+      {
+        id: '0:9',
+        anchor: new DOMRect(0, 24, 10, 18),
+        onRun: () => undefined,
+        onCopy: () => {
+          copied = true;
+        }
+      }
+    ]);
+
+    const runButton = document.querySelector<HTMLButtonElement>('.queryhouse-run-statement');
+    const copyButton = document.querySelector<HTMLButtonElement>('.queryhouse-copy-statement');
+    copyButton?.click();
+
+    expect(runButton).not.toBeNull();
+    expect(copyButton).not.toBeNull();
+    expect(copied).toBe(true);
+
+    controller.destroy();
+  });
 });
