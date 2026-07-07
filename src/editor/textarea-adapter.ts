@@ -1,4 +1,5 @@
 import type { EditorAdapter, TextRange } from './types';
+import { getDocumentColorMode, getUsesDarkSurface, isTransparentColor, listenForThemeChanges } from '../theme';
 
 const STYLE_ID = 'queryhouse-editor-style';
 const DEFAULT_LINE_HEIGHT_MULTIPLIER = 1.2;
@@ -92,7 +93,7 @@ function ensureStyles(ownerDocument: Document) {
     .queryhouse-syntax-editor {
       color: transparent !important;
       -webkit-text-fill-color: transparent !important;
-      caret-color: #111827 !important;
+      caret-color: var(--queryhouse-editor-text-color, #111827) !important;
     }
 
     .queryhouse-highlight-layer {
@@ -101,18 +102,18 @@ function ensureStyles(ownerDocument: Document) {
       pointer-events: none;
       overflow: hidden;
       box-sizing: border-box;
-      color: #111827;
+      color: var(--queryhouse-editor-text-color, #111827);
       white-space: pre-wrap;
       word-wrap: break-word;
       border: 1px solid transparent;
     }
 
     .queryhouse-syntax-keyword {
-      color: #0000ff;
+      color: var(--queryhouse-editor-keyword-color, #0000ff);
     }
 
     .queryhouse-syntax-comment {
-      color: #008000;
+      color: var(--queryhouse-editor-comment-color, #008000);
     }
 
     .queryhouse-line-numbers {
@@ -122,9 +123,9 @@ function ensureStyles(ownerDocument: Document) {
       overflow: hidden;
       box-sizing: border-box;
       text-align: right;
-      color: #6b7280;
-      background: rgba(248, 250, 252, 0.94);
-      border-right: 1px solid rgba(148, 163, 184, 0.45);
+      color: var(--queryhouse-line-number-color, #6b7280);
+      background: var(--queryhouse-line-number-background, rgba(248, 250, 252, 0.94));
+      border-right: 1px solid var(--queryhouse-line-number-border, rgba(148, 163, 184, 0.45));
       user-select: none;
       white-space: pre;
     }
@@ -182,6 +183,7 @@ export class TextareaAdapter implements EditorAdapter {
     this.listen(['input', 'scroll'], this.renderEditorOverlays);
     window.addEventListener('resize', this.renderEditorOverlays);
     this.disposers.push(() => window.removeEventListener('resize', this.renderEditorOverlays));
+    this.disposers.push(listenForThemeChanges(element.ownerDocument, this.renderEditorOverlays, element));
     this.renderEditorOverlays();
   }
 
@@ -301,6 +303,7 @@ export class TextareaAdapter implements EditorAdapter {
     this.element.classList.remove('queryhouse-syntax-editor');
     this.element.style.paddingLeft = this.originalPaddingLeft;
     this.element.style.paddingTop = this.originalPaddingTop;
+    this.element.style.removeProperty('--queryhouse-editor-text-color');
     this.lineNumbers.remove();
     this.highlightLayer.remove();
     this.diagnostics.remove();
@@ -314,6 +317,7 @@ export class TextareaAdapter implements EditorAdapter {
   private renderLineNumbers() {
     const lineCount = Math.max(1, this.element.value.split('\n').length);
     const style = window.getComputedStyle(this.element);
+    const theme = getEditorTheme(this.element);
     const lineHeightPx = getEditorLineHeightPx(style);
     this.updateEditorPadding(lineCount, lineHeightPx);
 
@@ -335,6 +339,9 @@ export class TextareaAdapter implements EditorAdapter {
       lineHeight: `${lineHeightPx}px`,
       letterSpacing: updatedStyle.letterSpacing
     });
+    this.lineNumbers.style.setProperty('--queryhouse-line-number-color', theme.lineNumberColor);
+    this.lineNumbers.style.setProperty('--queryhouse-line-number-background', theme.lineNumberBackground);
+    this.lineNumbers.style.setProperty('--queryhouse-line-number-border', theme.lineNumberBorder);
 
     if (this.lineNumbers.textContent !== numbers) {
       this.lineNumbers.textContent = numbers;
@@ -358,6 +365,8 @@ export class TextareaAdapter implements EditorAdapter {
     const value = this.element.value;
     const rect = this.element.getBoundingClientRect();
     const style = window.getComputedStyle(this.element);
+    const theme = getEditorTheme(this.element);
+    this.element.style.setProperty('--queryhouse-editor-text-color', theme.textColor);
     Object.assign(this.highlightLayer.style, {
       left: `${rect.left}px`,
       top: `${rect.top}px`,
@@ -369,6 +378,9 @@ export class TextareaAdapter implements EditorAdapter {
       letterSpacing: style.letterSpacing,
       borderRadius: style.borderRadius
     });
+    this.highlightLayer.style.setProperty('--queryhouse-editor-text-color', theme.textColor);
+    this.highlightLayer.style.setProperty('--queryhouse-editor-keyword-color', theme.keywordColor);
+    this.highlightLayer.style.setProperty('--queryhouse-editor-comment-color', theme.commentColor);
 
     this.highlightLayer.innerHTML = highlightSqlKeywords(value);
     this.highlightLayer.scrollTop = this.element.scrollTop;
@@ -568,6 +580,31 @@ function getEditorLineHeightPx(style: CSSStyleDeclaration) {
   }
 
   return 16 * DEFAULT_LINE_HEIGHT_MULTIPLIER;
+}
+
+function getEditorTheme(element: HTMLTextAreaElement) {
+  const hadSyntaxClass = element.classList.contains('queryhouse-syntax-editor');
+  if (hadSyntaxClass) {
+    element.classList.remove('queryhouse-syntax-editor');
+  }
+
+  const visibleStyle = window.getComputedStyle(element);
+  const visibleTextColor = isTransparentColor(visibleStyle.color) ? '#111827' : visibleStyle.color;
+  const usesDarkByColor = getUsesDarkSurface(visibleTextColor, visibleStyle.backgroundColor);
+  const usesDarkEditor = usesDarkByColor ?? (getDocumentColorMode(element.ownerDocument) === 'dark');
+
+  if (hadSyntaxClass) {
+    element.classList.add('queryhouse-syntax-editor');
+  }
+
+  return {
+    textColor: usesDarkEditor ? '#f8fafc' : visibleTextColor,
+    keywordColor: usesDarkEditor ? '#facc15' : '#0000ff',
+    commentColor: usesDarkEditor ? '#4ade80' : '#008000',
+    lineNumberColor: usesDarkEditor ? '#94a3b8' : '#6b7280',
+    lineNumberBackground: usesDarkEditor ? 'rgba(15, 23, 42, 0.94)' : 'rgba(248, 250, 252, 0.94)',
+    lineNumberBorder: usesDarkEditor ? 'rgba(51, 65, 85, 0.78)' : 'rgba(148, 163, 184, 0.45)'
+  };
 }
 
 function renderLineNumbers(lineCount: number, actionRows: Set<number>) {
