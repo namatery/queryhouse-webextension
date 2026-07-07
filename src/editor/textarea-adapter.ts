@@ -3,6 +3,7 @@ import { getDocumentColorMode, getUsesDarkSurface, isTransparentColor, listenFor
 
 const STYLE_ID = 'queryhouse-editor-style';
 const DEFAULT_LINE_HEIGHT_MULTIPLIER = 1.2;
+const BLANK_LINE_PLACEHOLDER = '\u200b';
 const SQL_KEYWORDS = new Set([
   'ADD',
   'ALTER',
@@ -105,6 +106,7 @@ function ensureStyles(ownerDocument: Document) {
       color: var(--queryhouse-editor-text-color, #111827);
       white-space: pre-wrap;
       word-wrap: break-word;
+      overflow-wrap: break-word;
       border: 1px solid transparent;
     }
 
@@ -114,20 +116,6 @@ function ensureStyles(ownerDocument: Document) {
 
     .queryhouse-syntax-comment {
       color: var(--queryhouse-editor-comment-color, #008000);
-    }
-
-    .queryhouse-line-numbers {
-      position: fixed;
-      z-index: 2147483646;
-      pointer-events: none;
-      overflow: hidden;
-      box-sizing: border-box;
-      text-align: right;
-      color: var(--queryhouse-line-number-color, #6b7280);
-      background: var(--queryhouse-line-number-background, rgba(248, 250, 252, 0.94));
-      border-right: 1px solid var(--queryhouse-line-number-border, rgba(148, 163, 184, 0.45));
-      user-select: none;
-      white-space: pre;
     }
 
     .queryhouse-diagnostics {
@@ -152,35 +140,20 @@ export class TextareaAdapter implements EditorAdapter {
 
   private readonly diagnostics: HTMLDivElement;
   private readonly highlightLayer: HTMLDivElement;
-  private readonly lineNumbers: HTMLDivElement;
-  private readonly originalPaddingLeft: string;
-  private readonly originalPaddingTop: string;
-  private readonly basePaddingLeftPx: number;
-  private readonly basePaddingTopPx: number;
-  private actionRows = new Set<number>();
   private disposers: Array<() => void> = [];
-  private lineNumberWidth = 0;
 
   constructor(element: HTMLTextAreaElement) {
     this.element = element;
     ensureStyles(element.ownerDocument);
-    const initialStyle = window.getComputedStyle(element);
-    this.originalPaddingLeft = element.style.paddingLeft;
-    this.originalPaddingTop = element.style.paddingTop;
-    this.basePaddingLeftPx = Number.parseFloat(initialStyle.paddingLeft) || 0;
-    this.basePaddingTopPx = Number.parseFloat(initialStyle.paddingTop) || 0;
     this.highlightLayer = element.ownerDocument.createElement('div');
     this.highlightLayer.className = 'queryhouse-highlight-layer';
     this.element.classList.add('queryhouse-syntax-editor');
-    this.lineNumbers = element.ownerDocument.createElement('div');
-    this.lineNumbers.className = 'queryhouse-line-numbers';
     this.diagnostics = element.ownerDocument.createElement('div');
     this.diagnostics.className = 'queryhouse-diagnostics';
     this.diagnostics.hidden = true;
-    element.ownerDocument.body.append(this.lineNumbers);
     element.ownerDocument.body.append(this.highlightLayer);
     element.ownerDocument.body.append(this.diagnostics);
-    this.listen(['input', 'scroll'], this.renderEditorOverlays);
+    this.listen(['input', 'scroll', 'select', 'keyup', 'mouseup', 'focus'], this.renderEditorOverlays);
     window.addEventListener('resize', this.renderEditorOverlays);
     this.disposers.push(() => window.removeEventListener('resize', this.renderEditorOverlays));
     this.disposers.push(listenForThemeChanges(element.ownerDocument, this.renderEditorOverlays, element));
@@ -268,11 +241,6 @@ export class TextareaAdapter implements EditorAdapter {
     return true;
   }
 
-  setActionRows(lineIndexes: number[]) {
-    this.actionRows = new Set(lineIndexes.filter((lineIndex) => lineIndex >= 0));
-    this.renderEditorOverlays();
-  }
-
   setCurrentQueryRange(range: TextRange | null) {
     this.element.classList.toggle('queryhouse-active-editor', range !== null);
     if (range) {
@@ -301,70 +269,27 @@ export class TextareaAdapter implements EditorAdapter {
     this.disposers = [];
     this.element.classList.remove('queryhouse-active-editor');
     this.element.classList.remove('queryhouse-syntax-editor');
-    this.element.style.paddingLeft = this.originalPaddingLeft;
-    this.element.style.paddingTop = this.originalPaddingTop;
     this.element.style.removeProperty('--queryhouse-editor-text-color');
-    this.lineNumbers.remove();
     this.highlightLayer.remove();
     this.diagnostics.remove();
   }
 
   private renderEditorOverlays = () => {
-    this.renderLineNumbers();
     this.renderSyntax();
   };
 
-  private renderLineNumbers() {
-    const lineCount = Math.max(1, this.element.value.split('\n').length);
-    const style = window.getComputedStyle(this.element);
-    const theme = getEditorTheme(this.element);
-    const lineHeightPx = getEditorLineHeightPx(style);
-    this.updateEditorPadding(lineCount, lineHeightPx);
-
-    const rect = this.element.getBoundingClientRect();
-    const updatedStyle = window.getComputedStyle(this.element);
-    const borderTop = Number.parseFloat(style.borderTopWidth) || 0;
-    const borderBottom = Number.parseFloat(style.borderBottomWidth) || 0;
-    const borderLeft = Number.parseFloat(style.borderLeftWidth) || 0;
-    const numbers = renderLineNumbers(lineCount, this.actionRows);
-
-    Object.assign(this.lineNumbers.style, {
-      left: `${rect.left + borderLeft}px`,
-      top: `${rect.top + borderTop}px`,
-      width: `${this.lineNumberWidth}px`,
-      height: `${Math.max(0, rect.height - borderTop - borderBottom)}px`,
-      paddingTop: `${this.basePaddingTopPx}px`,
-      paddingRight: '8px',
-      font: updatedStyle.font,
-      lineHeight: `${lineHeightPx}px`,
-      letterSpacing: updatedStyle.letterSpacing
-    });
-    this.lineNumbers.style.setProperty('--queryhouse-line-number-color', theme.lineNumberColor);
-    this.lineNumbers.style.setProperty('--queryhouse-line-number-background', theme.lineNumberBackground);
-    this.lineNumbers.style.setProperty('--queryhouse-line-number-border', theme.lineNumberBorder);
-
-    if (this.lineNumbers.textContent !== numbers) {
-      this.lineNumbers.textContent = numbers;
-    }
-    this.lineNumbers.scrollTop = this.element.scrollTop;
-  }
-
-  private updateEditorPadding(lineCount: number, lineHeightPx: number) {
-    const width = Math.max(36, String(lineCount + 1).length * 8 + 22);
-    const paddingTop = `${this.basePaddingTopPx + lineHeightPx}px`;
-    if (width === this.lineNumberWidth && this.element.style.paddingTop === paddingTop) {
+  private renderSyntax = () => {
+    const hasSelection = this.element.selectionStart !== this.element.selectionEnd;
+    this.element.classList.toggle('queryhouse-syntax-editor', !hasSelection);
+    this.highlightLayer.hidden = hasSelection;
+    if (hasSelection) {
       return;
     }
 
-    this.lineNumberWidth = width;
-    this.element.style.paddingLeft = `${this.basePaddingLeftPx + width}px`;
-    this.element.style.paddingTop = paddingTop;
-  }
-
-  private renderSyntax = () => {
     const value = this.element.value;
     const rect = this.element.getBoundingClientRect();
     const style = window.getComputedStyle(this.element);
+    const metrics = getEditorTextMetrics(style, this.element.wrap);
     const theme = getEditorTheme(this.element);
     this.element.style.setProperty('--queryhouse-editor-text-color', theme.textColor);
     Object.assign(this.highlightLayer.style, {
@@ -373,11 +298,28 @@ export class TextareaAdapter implements EditorAdapter {
       width: `${rect.width}px`,
       height: `${rect.height}px`,
       padding: style.padding,
-      font: style.font,
-      lineHeight: style.lineHeight,
-      letterSpacing: style.letterSpacing,
+      borderTop: getTransparentBorder(style.borderTopWidth, style.borderTopStyle),
+      borderRight: getTransparentBorder(style.borderRightWidth, style.borderRightStyle),
+      borderBottom: getTransparentBorder(style.borderBottomWidth, style.borderBottomStyle),
+      borderLeft: getTransparentBorder(style.borderLeftWidth, style.borderLeftStyle),
+      font: metrics.font,
+      fontFamily: metrics.fontFamily,
+      fontSize: metrics.fontSize,
+      fontStretch: metrics.fontStretch,
+      fontStyle: metrics.fontStyle,
+      fontVariant: metrics.fontVariant,
+      fontWeight: metrics.fontWeight,
+      lineHeight: metrics.lineHeight,
+      letterSpacing: metrics.letterSpacing,
+      textAlign: metrics.textAlign,
+      textTransform: metrics.textTransform,
+      textIndent: metrics.textIndent,
+      direction: metrics.direction,
+      unicodeBidi: metrics.unicodeBidi,
+      wordBreak: metrics.wordBreak,
       borderRadius: style.borderRadius
     });
+    applyTextFlowStyles(this.highlightLayer, metrics);
     this.highlightLayer.style.setProperty('--queryhouse-editor-text-color', theme.textColor);
     this.highlightLayer.style.setProperty('--queryhouse-editor-keyword-color', theme.keywordColor);
     this.highlightLayer.style.setProperty('--queryhouse-editor-comment-color', theme.commentColor);
@@ -393,6 +335,7 @@ export class TextareaAdapter implements EditorAdapter {
     const ownerWindow = ownerDocument.defaultView ?? window;
     const editorRect = this.element.getBoundingClientRect();
     const style = ownerWindow.getComputedStyle(this.element);
+    const metrics = getEditorTextMetrics(style, this.element.wrap);
     const mirror = ownerDocument.createElement('div');
     const marker = ownerDocument.createElement('span');
 
@@ -401,26 +344,36 @@ export class TextareaAdapter implements EditorAdapter {
       left: '-10000px',
       top: '0',
       visibility: 'hidden',
-      boxSizing: style.boxSizing,
+      boxSizing: 'border-box',
       width: `${editorRect.width}px`,
       minHeight: `${editorRect.height}px`,
-      borderTop: style.borderTop,
-      borderRight: style.borderRight,
-      borderBottom: style.borderBottom,
-      borderLeft: style.borderLeft,
+      borderTop: getTransparentBorder(style.borderTopWidth, style.borderTopStyle),
+      borderRight: getTransparentBorder(style.borderRightWidth, style.borderRightStyle),
+      borderBottom: getTransparentBorder(style.borderBottomWidth, style.borderBottomStyle),
+      borderLeft: getTransparentBorder(style.borderLeftWidth, style.borderLeftStyle),
       padding: style.padding,
-      font: style.font,
-      lineHeight: style.lineHeight,
-      letterSpacing: style.letterSpacing,
-      textAlign: style.textAlign,
-      textTransform: style.textTransform,
-      textIndent: style.textIndent,
-      whiteSpace: this.element.wrap === 'off' ? 'pre' : 'pre-wrap',
-      overflowWrap: this.element.wrap === 'off' ? 'normal' : 'break-word',
-      wordBreak: style.wordBreak,
-      tabSize: style.tabSize
+      font: metrics.font,
+      fontFamily: metrics.fontFamily,
+      fontSize: metrics.fontSize,
+      fontStretch: metrics.fontStretch,
+      fontStyle: metrics.fontStyle,
+      fontVariant: metrics.fontVariant,
+      fontWeight: metrics.fontWeight,
+      lineHeight: metrics.lineHeight,
+      letterSpacing: metrics.letterSpacing,
+      textAlign: metrics.textAlign,
+      textTransform: metrics.textTransform,
+      textIndent: metrics.textIndent,
+      direction: metrics.direction,
+      unicodeBidi: metrics.unicodeBidi,
+      whiteSpace: metrics.whiteSpace,
+      overflowWrap: metrics.overflowWrap,
+      wordWrap: metrics.overflowWrap,
+      wordBreak: metrics.wordBreak,
+      tabSize: metrics.tabSize
     });
 
+    applyTextFlowStyles(mirror, metrics);
     mirror.textContent = this.element.value.slice(0, Math.max(0, Math.min(offset, this.element.value.length)));
     marker.textContent = '\u200b';
     mirror.append(marker);
@@ -428,12 +381,11 @@ export class TextareaAdapter implements EditorAdapter {
 
     const mirrorRect = mirror.getBoundingClientRect();
     const markerRect = marker.getBoundingClientRect();
-    const lineHeight = Number.parseFloat(style.lineHeight) || Number.parseFloat(style.fontSize) || 16;
     const left = editorRect.left + markerRect.left - mirrorRect.left - this.element.scrollLeft;
     const top = editorRect.top + markerRect.top - mirrorRect.top - this.element.scrollTop;
     mirror.remove();
 
-    return new ownerWindow.DOMRect(left, top, 1, Math.max(1, markerRect.height || lineHeight));
+    return new ownerWindow.DOMRect(left, top, 1, Math.max(1, markerRect.height || metrics.lineHeightPx));
   }
 
   private setValueForHost(value: string) {
@@ -582,6 +534,62 @@ function getEditorLineHeightPx(style: CSSStyleDeclaration) {
   return 16 * DEFAULT_LINE_HEIGHT_MULTIPLIER;
 }
 
+function getEditorTextMetrics(style: CSSStyleDeclaration, wrap: string) {
+  const lineHeightPx = getEditorLineHeightPx(style);
+  const wrapsText = wrap !== 'off';
+  const lineHeight = style.lineHeight || `${lineHeightPx}px`;
+
+  return {
+    font: style.font,
+    fontFamily: style.fontFamily,
+    fontSize: style.fontSize,
+    fontStretch: style.fontStretch,
+    fontStyle: style.fontStyle,
+    fontVariant: style.fontVariant,
+    fontWeight: style.fontWeight,
+    lineHeight,
+    lineHeightPx,
+    letterSpacing: style.letterSpacing,
+    tabSize: style.tabSize,
+    textAlign: style.textAlign,
+    textTransform: style.textTransform,
+    textIndent: style.textIndent,
+    direction: style.direction,
+    unicodeBidi: style.unicodeBidi,
+    wordBreak: style.wordBreak,
+    whiteSpace: wrapsText ? 'pre-wrap' : 'pre',
+    overflowWrap: wrapsText ? 'break-word' : 'normal',
+    fontKerning: style.getPropertyValue('font-kerning'),
+    fontFeatureSettings: style.getPropertyValue('font-feature-settings'),
+    fontVariationSettings: style.getPropertyValue('font-variation-settings'),
+    fontVariantLigatures: style.getPropertyValue('font-variant-ligatures'),
+    textRendering: style.getPropertyValue('text-rendering')
+  };
+}
+
+function applyTextFlowStyles(element: HTMLElement, metrics: ReturnType<typeof getEditorTextMetrics>) {
+  element.style.whiteSpace = metrics.whiteSpace;
+  element.style.overflowWrap = metrics.overflowWrap;
+  element.style.wordWrap = metrics.overflowWrap;
+  element.style.tabSize = metrics.tabSize;
+  setStylePropertyIfPresent(element, 'font-kerning', metrics.fontKerning);
+  setStylePropertyIfPresent(element, 'font-feature-settings', metrics.fontFeatureSettings);
+  setStylePropertyIfPresent(element, 'font-variation-settings', metrics.fontVariationSettings);
+  setStylePropertyIfPresent(element, 'font-variant-ligatures', metrics.fontVariantLigatures);
+  setStylePropertyIfPresent(element, 'text-rendering', metrics.textRendering);
+}
+
+function getTransparentBorder(width: string, style: string) {
+  const borderStyle = style && style !== 'none' ? style : 'solid';
+  return `${width || '0px'} ${borderStyle} transparent`;
+}
+
+function setStylePropertyIfPresent(element: HTMLElement, property: string, value: string) {
+  if (value) {
+    element.style.setProperty(property, value);
+  }
+}
+
 function getEditorTheme(element: HTMLTextAreaElement) {
   const hadSyntaxClass = element.classList.contains('queryhouse-syntax-editor');
   if (hadSyntaxClass) {
@@ -600,28 +608,8 @@ function getEditorTheme(element: HTMLTextAreaElement) {
   return {
     textColor: usesDarkEditor ? '#f8fafc' : visibleTextColor,
     keywordColor: usesDarkEditor ? '#facc15' : '#0000ff',
-    commentColor: usesDarkEditor ? '#4ade80' : '#008000',
-    lineNumberColor: usesDarkEditor ? '#94a3b8' : '#6b7280',
-    lineNumberBackground: usesDarkEditor ? 'rgba(15, 23, 42, 0.94)' : 'rgba(248, 250, 252, 0.94)',
-    lineNumberBorder: usesDarkEditor ? 'rgba(51, 65, 85, 0.78)' : 'rgba(148, 163, 184, 0.45)'
+    commentColor: usesDarkEditor ? '#4ade80' : '#008000'
   };
-}
-
-function renderLineNumbers(lineCount: number, actionRows: Set<number>) {
-  const lines = [''];
-  let visibleLineNumber = 1;
-
-  for (let lineIndex = 0; lineIndex < lineCount; lineIndex += 1) {
-    if (actionRows.has(lineIndex)) {
-      lines.push('');
-      continue;
-    }
-
-    lines.push(String(visibleLineNumber));
-    visibleLineNumber += 1;
-  }
-
-  return lines.join('\n');
 }
 
 function highlightSqlKeywords(value: string) {
@@ -670,7 +658,7 @@ function highlightSqlKeywords(value: string) {
     index += 1;
   }
 
-  return html;
+  return preserveBlankHighlightLines(html);
 }
 
 function renderCommentToken(value: string) {
@@ -708,4 +696,8 @@ function escapeHtml(value: string) {
     };
     return entities[char] ?? char;
   });
+}
+
+function preserveBlankHighlightLines(html: string) {
+  return html.replace(/(^|\n)(?=\n|$)/g, `$1${BLANK_LINE_PLACEHOLDER}`);
 }

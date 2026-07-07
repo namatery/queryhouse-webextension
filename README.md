@@ -26,7 +26,7 @@
 
 ## Why QueryHouse
 
-QueryHouse is a Chrome-compatible MV3 extension that improves textarea-based ClickHouse SQL editors without replacing the host page. It adds line numbers, per-statement actions, SQL completions, syntax coloring, comment shortcuts, and validation while still running queries through the page's native controls.
+QueryHouse is a Chrome-compatible MV3 extension that improves textarea-based ClickHouse SQL editors without replacing the host page. It adds per-statement actions, SQL completions, syntax coloring, comment shortcuts, and validation while still running queries through the page's native controls.
 
 ## Site Access
 
@@ -35,7 +35,6 @@ QueryHouse does not run on a fixed list of domains. Open the extension popup on 
 ## Features
 
 - 🔎 **SQL editor detection** - Detects supported ClickHouse SQL textareas and mounts QueryHouse only where it can help.
-- 🔢 **Line numbers** - Adds a stable gutter with line numbers and unnumbered action rows for statement controls.
 - ▶️ **Run single statement** - Shows `Run | +Tab | JSON` above completed statements and executes one statement through the host page's Run button.
 - 🧠 **Static ClickHouse autocomplete** - Suggests ClickHouse SQL keywords, including `FINAL`, `PREWHERE`, `QUALIFY`, `SAMPLE`, `LIMIT BY`, `SETTINGS`, and `FORMAT`.
 - 🎨 **Syntax coloring** - Colors SQL keywords and comments without adding a blue current-statement background.

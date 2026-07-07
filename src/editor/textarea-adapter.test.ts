@@ -1,72 +1,28 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { TextareaAdapter } from './textarea-adapter';
 
-describe('TextareaAdapter line numbers', () => {
+describe('TextareaAdapter editor overlays', () => {
   afterEach(() => {
     document.body.replaceChildren();
   });
 
-  it('renders line numbers beside the textarea', () => {
+  it('does not render line numbers beside the textarea', () => {
     const textarea = document.createElement('textarea');
+    textarea.style.paddingLeft = '12px';
+    textarea.style.paddingTop = '10px';
     textarea.value = 'SELECT 1;\nSELECT 2;';
     document.body.append(textarea);
 
     const adapter = new TextareaAdapter(textarea);
-    const lineNumbers = document.querySelector('.queryhouse-line-numbers');
 
-    expect(lineNumbers?.textContent).toBe('\n1\n2');
-    expect(textarea.style.paddingLeft).not.toBe('');
-    expect(textarea.style.paddingTop).not.toBe('');
-
-    adapter.destroy();
-  });
-
-  it('updates line numbers when the textarea changes', () => {
-    const textarea = document.createElement('textarea');
-    textarea.value = 'SELECT 1;';
-    document.body.append(textarea);
-
-    const adapter = new TextareaAdapter(textarea);
-    textarea.value = 'SELECT 1;\nSELECT 2;\nSELECT 3;';
-    textarea.dispatchEvent(new InputEvent('input', { bubbles: true }));
-
-    expect(document.querySelector('.queryhouse-line-numbers')?.textContent).toBe('\n1\n2\n3');
+    expect(document.querySelector('.queryhouse-line-numbers')).toBeNull();
+    expect(textarea.style.paddingLeft).toBe('12px');
+    expect(textarea.style.paddingTop).toBe('10px');
 
     adapter.destroy();
   });
 
-  it('reserves exactly one editor line above SQL for statement actions', () => {
-    const textarea = document.createElement('textarea');
-    textarea.style.paddingTop = '4px';
-    textarea.style.lineHeight = '19px';
-    textarea.value = 'SELECT 1;';
-    document.body.append(textarea);
-
-    const adapter = new TextareaAdapter(textarea);
-    const lineNumbers = document.querySelector<HTMLElement>('.queryhouse-line-numbers');
-
-    expect(textarea.style.paddingTop).toBe('23px');
-    expect(lineNumbers?.textContent).toBe('\n1');
-    expect(lineNumbers?.style.paddingTop).toBe('4px');
-    expect(lineNumbers?.style.lineHeight).toBe('19px');
-
-    adapter.destroy();
-  });
-
-  it('leaves action rows unnumbered while numbering SQL rows', () => {
-    const textarea = document.createElement('textarea');
-    textarea.value = 'SELECT 1;\n\nSELECT 2;';
-    document.body.append(textarea);
-
-    const adapter = new TextareaAdapter(textarea);
-    adapter.setActionRows([1]);
-
-    expect(document.querySelector('.queryhouse-line-numbers')?.textContent).toBe('\n1\n\n2');
-
-    adapter.destroy();
-  });
-
-  it('removes line numbers and restores padding on destroy', () => {
+  it('keeps textarea padding unchanged after input updates', () => {
     const textarea = document.createElement('textarea');
     textarea.style.paddingLeft = '12px';
     textarea.style.paddingTop = '10px';
@@ -74,11 +30,65 @@ describe('TextareaAdapter line numbers', () => {
     document.body.append(textarea);
 
     const adapter = new TextareaAdapter(textarea);
-    adapter.destroy();
+    textarea.value = 'SELECT 1;\n\nSELECT 2;';
+    textarea.dispatchEvent(new InputEvent('input', { bubbles: true }));
 
     expect(document.querySelector('.queryhouse-line-numbers')).toBeNull();
     expect(textarea.style.paddingLeft).toBe('12px');
     expect(textarea.style.paddingTop).toBe('10px');
+
+    adapter.destroy();
+  });
+
+  it('preserves normal line height for the syntax overlay', () => {
+    const textarea = document.createElement('textarea');
+    textarea.style.fontSize = '20px';
+    textarea.style.lineHeight = 'normal';
+    textarea.value = 'SELECT 1;\n\n\nSELECT 2;';
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    const syntaxLayer = document.querySelector<HTMLElement>('.queryhouse-highlight-layer');
+
+    expect(syntaxLayer?.style.lineHeight).toBe('normal');
+
+    adapter.destroy();
+  });
+
+  it('keeps blank highlight rows represented in the overlay content', () => {
+    const textarea = document.createElement('textarea');
+    textarea.value = 'SELECT 1;\n\n\n';
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    const syntaxLayer = document.querySelector<HTMLElement>('.queryhouse-highlight-layer');
+
+    expect(syntaxLayer?.textContent).toBe('SELECT 1;\n\u200b\n\u200b\n\u200b');
+
+    adapter.destroy();
+  });
+
+  it('uses native textarea rendering while text is selected', () => {
+    const textarea = document.createElement('textarea');
+    textarea.value = 'SELECT 1;\nSELECT 2;';
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    const syntaxLayer = document.querySelector<HTMLElement>('.queryhouse-highlight-layer');
+
+    textarea.setSelectionRange(0, 8);
+    textarea.dispatchEvent(new Event('select'));
+
+    expect(textarea.classList.contains('queryhouse-syntax-editor')).toBe(false);
+    expect(syntaxLayer?.hidden).toBe(true);
+
+    textarea.setSelectionRange(8, 8);
+    textarea.dispatchEvent(new Event('select'));
+
+    expect(textarea.classList.contains('queryhouse-syntax-editor')).toBe(true);
+    expect(syntaxLayer?.hidden).toBe(false);
+
+    adapter.destroy();
   });
 });
 
@@ -124,6 +134,39 @@ describe('TextareaAdapter syntax highlighting', () => {
     adapter.destroy();
   });
 
+  it('matches textarea text flow metrics on the syntax layer', () => {
+    const textarea = document.createElement('textarea');
+    textarea.wrap = 'off';
+    textarea.style.fontFamily = 'monospace';
+    textarea.style.fontSize = '15px';
+    textarea.style.fontWeight = '600';
+    textarea.style.borderTop = '3px solid red';
+    textarea.style.borderRight = '4px solid red';
+    textarea.style.borderBottom = '5px solid red';
+    textarea.style.borderLeft = '6px solid red';
+    textarea.style.tabSize = '4';
+    textarea.style.textIndent = '2px';
+    textarea.style.textTransform = 'uppercase';
+    textarea.value = '\tSELECT value;';
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    const syntaxLayer = document.querySelector<HTMLElement>('.queryhouse-highlight-layer');
+
+    expect(syntaxLayer?.style.fontFamily).toBe('monospace');
+    expect(syntaxLayer?.style.fontSize).toBe('15px');
+    expect(syntaxLayer?.style.fontWeight).toBe('600');
+    expect(syntaxLayer?.style.whiteSpace).toBe('pre');
+    expect(syntaxLayer?.style.overflowWrap).toBe('normal');
+    expect(syntaxLayer?.style.tabSize).toBe('4');
+    expect(syntaxLayer?.style.textIndent).toBe('2px');
+    expect(syntaxLayer?.style.textTransform).toBe('uppercase');
+    expect(syntaxLayer?.style.borderTop).toBe('3px solid transparent');
+    expect(syntaxLayer?.style.borderLeft).toBe('6px solid transparent');
+
+    adapter.destroy();
+  });
+
   it('uses readable overlay colors when the host editor is dark', () => {
     const textarea = document.createElement('textarea');
     textarea.style.color = 'rgb(229, 231, 235)';
@@ -138,9 +181,6 @@ describe('TextareaAdapter syntax highlighting', () => {
     expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-text-color')).toBe('#f8fafc');
     expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-keyword-color')).toBe('#facc15');
     expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-comment-color')).toBe('#4ade80');
-    expect(document.querySelector<HTMLElement>('.queryhouse-line-numbers')?.style.getPropertyValue('--queryhouse-line-number-background')).toBe(
-      'rgba(15, 23, 42, 0.94)'
-    );
 
     adapter.destroy();
   });
@@ -166,17 +206,14 @@ describe('TextareaAdapter syntax highlighting', () => {
 
     const adapter = new TextareaAdapter(textarea);
     const syntaxLayer = document.querySelector<HTMLElement>('.queryhouse-highlight-layer');
-    const lineNumbers = document.querySelector<HTMLElement>('.queryhouse-line-numbers');
 
     expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-keyword-color')).toBe('#0000ff');
-    expect(lineNumbers?.style.getPropertyValue('--queryhouse-line-number-background')).toBe('rgba(248, 250, 252, 0.94)');
 
     document.documentElement.classList.add('dark');
     await new Promise((resolve) => window.setTimeout(resolve, 0));
     await new Promise((resolve) => window.setTimeout(resolve, 0));
 
     expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-keyword-color')).toBe('#facc15');
-    expect(lineNumbers?.style.getPropertyValue('--queryhouse-line-number-background')).toBe('rgba(15, 23, 42, 0.94)');
 
     adapter.destroy();
   });

@@ -62,15 +62,12 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
 
   function refreshRunStatementActions() {
     if (!adapter || !flags.runCompletedStatement) {
-      adapter?.setActionRows([]);
       runStatement.hide();
       return;
     }
 
     const sql = adapter.getText();
     const statements = splitSqlStatements(sql);
-    const actionRows = getStatementActionRows(sql, statements.map((statement) => statement.start));
-    adapter.setActionRows(actionRows);
 
     const actions = statements.flatMap((statement) => {
       const executableSql = getExecutableStatementText(sql, statement);
@@ -92,7 +89,6 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
     });
 
     if (actions.length === 0) {
-      adapter.setActionRows([]);
       runStatement.hide();
       return;
     }
@@ -167,26 +163,4 @@ export function createQueryHouse(ownerDocument: Document, flags: FeatureFlags = 
   }
 
   return { mount, destroy };
-}
-
-function getStatementActionRows(sql: string, statementStarts: number[]) {
-  return statementStarts
-    .map((statementStart) => getPreviousBlankLineIndex(sql, statementStart))
-    .filter((lineIndex): lineIndex is number => lineIndex !== null);
-}
-
-function getPreviousBlankLineIndex(sql: string, statementStart: number) {
-  const lineStart = sql.lastIndexOf('\n', Math.max(0, statementStart - 1)) + 1;
-  const previousLineEnd = lineStart - 1;
-  if (previousLineEnd <= 0) {
-    return null;
-  }
-
-  const previousLineStart = sql.lastIndexOf('\n', previousLineEnd - 1) + 1;
-  const previousLine = sql.slice(previousLineStart, previousLineEnd);
-  if (previousLine.trim().length > 0) {
-    return null;
-  }
-
-  return sql.slice(0, previousLineStart).split('\n').length - 1;
 }
