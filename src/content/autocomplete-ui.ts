@@ -3,11 +3,13 @@ import type { CompletionItem, CompletionResult } from '../sql/completions';
 const STYLE_ID = 'queryhouse-autocomplete-style';
 
 export type AutocompleteController = {
-  show(result: CompletionResult, anchor: DOMRect, onPick: (item: CompletionItem) => void): void;
+  show(result: CompletionResult, anchor: DOMRect, onPick: (item: CompletionItem, trigger: CompletionTrigger) => void): void;
   hide(): void;
   handleKeydown(event: KeyboardEvent): boolean;
   destroy(): void;
 };
+
+export type CompletionTrigger = 'enter' | 'tab' | 'pointer';
 
 export function createAutocompleteController(ownerDocument: Document): AutocompleteController {
   ensureStyles(ownerDocument);
@@ -18,7 +20,7 @@ export function createAutocompleteController(ownerDocument: Document): Autocompl
 
   let items: CompletionItem[] = [];
   let selected = 0;
-  let pick: ((item: CompletionItem) => void) | null = null;
+  let pick: ((item: CompletionItem, trigger: CompletionTrigger) => void) | null = null;
 
   function render() {
     list.replaceChildren(
@@ -29,7 +31,7 @@ export function createAutocompleteController(ownerDocument: Document): Autocompl
         row.innerHTML = `<span>${escapeHtml(item.label)}</span><small>${escapeHtml(item.detail ?? item.kind)}</small>`;
         row.addEventListener('mousedown', (event) => {
           event.preventDefault();
-          pick?.(item);
+          pick?.(item, 'pointer');
         });
         return row;
       })
@@ -72,7 +74,7 @@ export function createAutocompleteController(ownerDocument: Document): Autocompl
       if (event.key === 'Enter' || event.key === 'Tab') {
         const item = items[selected];
         if (item) {
-          pick?.(item);
+          pick?.(item, event.key === 'Enter' ? 'enter' : 'tab');
         }
         event.preventDefault();
         return true;
