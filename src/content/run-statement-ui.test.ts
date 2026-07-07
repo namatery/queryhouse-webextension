@@ -29,4 +29,39 @@ describe('createRunStatementController theme handling', () => {
 
     controller.destroy();
   });
+
+  it('hides statement actions when their anchor is outside the viewport', () => {
+    const controller = createRunStatementController(document);
+
+    controller.setActions([
+      {
+        id: '0:9',
+        anchor: new DOMRect(0, -48, 10, 18),
+        onRun: () => undefined
+      }
+    ]);
+
+    const button = document.querySelector<HTMLButtonElement>('.queryhouse-run-statement');
+    expect(button?.hidden).toBe(true);
+
+    controller.destroy();
+  });
+
+  it('hides statement actions when their anchor is clipped by the editor viewport', () => {
+    const controller = createRunStatementController(document);
+
+    controller.setActions([
+      {
+        id: '0:9',
+        anchor: new DOMRect(12, 32, 10, 18),
+        clipRect: new DOMRect(12, 80, 240, 120),
+        onRun: () => undefined
+      }
+    ]);
+
+    const button = document.querySelector<HTMLButtonElement>('.queryhouse-run-statement');
+    expect(button?.hidden).toBe(true);
+
+    controller.destroy();
+  });
 });
