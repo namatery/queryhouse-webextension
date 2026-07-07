@@ -84,6 +84,8 @@ describe('TextareaAdapter line numbers', () => {
 
 describe('TextareaAdapter syntax highlighting', () => {
   afterEach(() => {
+    document.documentElement.className = '';
+    document.querySelectorAll('.queryhouse-test-theme').forEach((element) => element.remove());
     document.body.replaceChildren();
   });
 
@@ -136,6 +138,45 @@ describe('TextareaAdapter syntax highlighting', () => {
     expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-text-color')).toBe('#f8fafc');
     expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-keyword-color')).toBe('#facc15');
     expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-comment-color')).toBe('#4ade80');
+    expect(document.querySelector<HTMLElement>('.queryhouse-line-numbers')?.style.getPropertyValue('--queryhouse-line-number-background')).toBe(
+      'rgba(15, 23, 42, 0.94)'
+    );
+
+    adapter.destroy();
+  });
+
+  it('updates overlay colors when the host theme changes', async () => {
+    const style = document.createElement('style');
+    style.className = 'queryhouse-test-theme';
+    style.textContent = `
+      textarea {
+        color: rgb(17, 24, 39);
+        background-color: rgb(255, 255, 255);
+      }
+
+      html.dark textarea {
+        color: rgb(229, 231, 235);
+        background-color: rgb(17, 24, 39);
+      }
+    `;
+    document.head.append(style);
+    const textarea = document.createElement('textarea');
+    textarea.value = 'SELECT value;';
+    document.body.append(textarea);
+
+    const adapter = new TextareaAdapter(textarea);
+    const syntaxLayer = document.querySelector<HTMLElement>('.queryhouse-highlight-layer');
+    const lineNumbers = document.querySelector<HTMLElement>('.queryhouse-line-numbers');
+
+    expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-keyword-color')).toBe('#0000ff');
+    expect(lineNumbers?.style.getPropertyValue('--queryhouse-line-number-background')).toBe('rgba(248, 250, 252, 0.94)');
+
+    document.documentElement.classList.add('dark');
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+    await new Promise((resolve) => window.setTimeout(resolve, 0));
+
+    expect(syntaxLayer?.style.getPropertyValue('--queryhouse-editor-keyword-color')).toBe('#facc15');
+    expect(lineNumbers?.style.getPropertyValue('--queryhouse-line-number-background')).toBe('rgba(15, 23, 42, 0.94)');
 
     adapter.destroy();
   });

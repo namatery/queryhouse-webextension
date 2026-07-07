@@ -1,3 +1,5 @@
+import { getDocumentColorMode, listenForThemeChanges } from '../theme';
+
 const STYLE_ID = 'queryhouse-run-statement-style';
 
 export type RunStatementAction = {
@@ -15,6 +17,9 @@ export type RunStatementController = {
 export function createRunStatementController(ownerDocument: Document): RunStatementController {
   ensureStyles(ownerDocument);
   const buttons: HTMLButtonElement[] = [];
+  const themeDisposer = listenForThemeChanges(ownerDocument, () => {
+    buttons.forEach((button) => applyThemeClass(ownerDocument, button));
+  });
 
   function clear() {
     buttons.splice(0).forEach((button) => button.remove());
@@ -39,6 +44,7 @@ export function createRunStatementController(ownerDocument: Document): RunStatem
           action.onRun();
         });
         ownerDocument.body.append(button);
+        applyThemeClass(ownerDocument, button);
         button.style.visibility = 'hidden';
         positionButton(button, action);
         button.style.visibility = '';
@@ -50,8 +56,13 @@ export function createRunStatementController(ownerDocument: Document): RunStatem
     },
     destroy() {
       clear();
+      themeDisposer();
     }
   };
+}
+
+function applyThemeClass(ownerDocument: Document, button: HTMLElement) {
+  button.classList.toggle('is-dark', getDocumentColorMode(ownerDocument) === 'dark');
 }
 
 function positionButton(button: HTMLElement, action: RunStatementAction) {
@@ -90,17 +101,29 @@ function ensureStyles(ownerDocument: Document) {
       align-items: center;
       gap: 4px;
       height: 18px;
-      border: 1px solid rgba(248, 250, 252, 0.16);
+      border: 1px solid rgba(203, 213, 225, 0.92);
       border-radius: 4px;
       padding: 0 4px;
-      color: #f8fafc;
-      background: rgba(15, 23, 42, 0.72);
-      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.28);
+      color: #1f2937;
+      background: rgba(255, 255, 255, 0.92);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
       font: 11px/1 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
       cursor: pointer;
     }
 
     .queryhouse-run-statement:hover {
+      color: #111827;
+      background: rgba(248, 250, 252, 0.98);
+    }
+
+    .queryhouse-run-statement.is-dark {
+      border-color: rgba(248, 250, 252, 0.16);
+      color: #f8fafc;
+      background: rgba(15, 23, 42, 0.72);
+      box-shadow: 0 1px 3px rgba(15, 23, 42, 0.28);
+    }
+
+    .queryhouse-run-statement.is-dark:hover {
       color: #ffffff;
       background: rgba(15, 23, 42, 0.88);
     }

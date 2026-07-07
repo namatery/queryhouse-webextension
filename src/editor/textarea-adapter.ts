@@ -1,4 +1,5 @@
 import type { EditorAdapter, TextRange } from './types';
+import { getDocumentColorMode, getUsesDarkSurface, isTransparentColor, listenForThemeChanges } from '../theme';
 
 const STYLE_ID = 'queryhouse-editor-style';
 const DEFAULT_LINE_HEIGHT_MULTIPLIER = 1.2;
@@ -122,9 +123,9 @@ function ensureStyles(ownerDocument: Document) {
       overflow: hidden;
       box-sizing: border-box;
       text-align: right;
-      color: #6b7280;
-      background: rgba(248, 250, 252, 0.94);
-      border-right: 1px solid rgba(148, 163, 184, 0.45);
+      color: var(--queryhouse-line-number-color, #6b7280);
+      background: var(--queryhouse-line-number-background, rgba(248, 250, 252, 0.94));
+      border-right: 1px solid var(--queryhouse-line-number-border, rgba(148, 163, 184, 0.45));
       user-select: none;
       white-space: pre;
     }
@@ -182,6 +183,7 @@ export class TextareaAdapter implements EditorAdapter {
     this.listen(['input', 'scroll'], this.renderEditorOverlays);
     window.addEventListener('resize', this.renderEditorOverlays);
     this.disposers.push(() => window.removeEventListener('resize', this.renderEditorOverlays));
+    this.disposers.push(listenForThemeChanges(element.ownerDocument, this.renderEditorOverlays, element));
     this.renderEditorOverlays();
   }
 
@@ -315,6 +317,7 @@ export class TextareaAdapter implements EditorAdapter {
   private renderLineNumbers() {
     const lineCount = Math.max(1, this.element.value.split('\n').length);
     const style = window.getComputedStyle(this.element);
+    const theme = getEditorTheme(this.element);
     const lineHeightPx = getEditorLineHeightPx(style);
     this.updateEditorPadding(lineCount, lineHeightPx);
 
@@ -336,6 +339,9 @@ export class TextareaAdapter implements EditorAdapter {
       lineHeight: `${lineHeightPx}px`,
       letterSpacing: updatedStyle.letterSpacing
     });
+    this.lineNumbers.style.setProperty('--queryhouse-line-number-color', theme.lineNumberColor);
+    this.lineNumbers.style.setProperty('--queryhouse-line-number-background', theme.lineNumberBackground);
+    this.lineNumbers.style.setProperty('--queryhouse-line-number-border', theme.lineNumberBorder);
 
     if (this.lineNumbers.textContent !== numbers) {
       this.lineNumbers.textContent = numbers;
@@ -584,13 +590,8 @@ function getEditorTheme(element: HTMLTextAreaElement) {
 
   const visibleStyle = window.getComputedStyle(element);
   const visibleTextColor = isTransparentColor(visibleStyle.color) ? '#111827' : visibleStyle.color;
-  const textRgb = parseRgbColor(visibleTextColor);
-  const backgroundRgb = isTransparentColor(visibleStyle.backgroundColor) ? null : parseRgbColor(visibleStyle.backgroundColor);
-  const usesDarkEditor = backgroundRgb
-    ? getRelativeLuminance(backgroundRgb) < 0.35
-    : textRgb
-      ? getRelativeLuminance(textRgb) > 0.55
-      : false;
+  const usesDarkByColor = getUsesDarkSurface(visibleTextColor, visibleStyle.backgroundColor);
+  const usesDarkEditor = usesDarkByColor ?? (getDocumentColorMode(element.ownerDocument) === 'dark');
 
   if (hadSyntaxClass) {
     element.classList.add('queryhouse-syntax-editor');
@@ -599,35 +600,11 @@ function getEditorTheme(element: HTMLTextAreaElement) {
   return {
     textColor: usesDarkEditor ? '#f8fafc' : visibleTextColor,
     keywordColor: usesDarkEditor ? '#facc15' : '#0000ff',
-    commentColor: usesDarkEditor ? '#4ade80' : '#008000'
+    commentColor: usesDarkEditor ? '#4ade80' : '#008000',
+    lineNumberColor: usesDarkEditor ? '#94a3b8' : '#6b7280',
+    lineNumberBackground: usesDarkEditor ? 'rgba(15, 23, 42, 0.94)' : 'rgba(248, 250, 252, 0.94)',
+    lineNumberBorder: usesDarkEditor ? 'rgba(51, 65, 85, 0.78)' : 'rgba(148, 163, 184, 0.45)'
   };
-}
-
-function isTransparentColor(value: string) {
-  const alpha = value.match(/rgba\(\s*[.\d]+\s*,\s*[.\d]+\s*,\s*[.\d]+\s*,\s*([.\d]+)\s*\)/i)?.[1];
-  return value === 'transparent' || (alpha !== undefined && Number.parseFloat(alpha) === 0);
-}
-
-function parseRgbColor(value: string) {
-  const match = value.match(/rgba?\(\s*([.\d]+)\s*,\s*([.\d]+)\s*,\s*([.\d]+)/i);
-  if (!match) {
-    return null;
-  }
-
-  return {
-    r: Number(match[1]),
-    g: Number(match[2]),
-    b: Number(match[3])
-  };
-}
-
-function getRelativeLuminance(color: { r: number; g: number; b: number }) {
-  const [r, g, b] = [color.r, color.g, color.b].map((channel) => {
-    const normalized = channel / 255;
-    return normalized <= 0.03928 ? normalized / 12.92 : ((normalized + 0.055) / 1.055) ** 2.4;
-  });
-
-  return 0.2126 * (r ?? 0) + 0.7152 * (g ?? 0) + 0.0722 * (b ?? 0);
 }
 
 function renderLineNumbers(lineCount: number, actionRows: Set<number>) {
