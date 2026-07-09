@@ -62,6 +62,24 @@ The build output is generated at:
 .output/chrome-mv3
 ```
 
+Build the unpacked Firefox extension:
+
+```bash
+npm run build:firefox
+```
+
+The Firefox MV3 build output is generated at:
+
+```text
+.output/firefox-mv3
+```
+
+Firefox MV2 is also available for local compatibility testing:
+
+```bash
+npm run build:firefox:mv2
+```
+
 ## Test In Chrome
 
 1. Open `chrome://extensions`.
@@ -86,6 +104,12 @@ Build the Chrome MV3 extension:
 npm run build
 ```
 
+Build the Firefox MV3 extension:
+
+```bash
+npm run build:firefox
+```
+
 Run the full validation set before committing:
 
 ```bash
@@ -93,6 +117,7 @@ npm test
 npm run typecheck
 npm run lint
 npm run build
+npm run build:firefox
 ```
 
 ## Contribute
