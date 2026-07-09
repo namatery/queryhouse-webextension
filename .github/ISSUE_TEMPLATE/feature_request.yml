@@ -1,0 +1,88 @@
+name: Feature or improvement
+description: Suggest a new QueryHouse feature or an improvement to existing behavior.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting an improvement. Do not include private credentials, tokens, or sensitive query data.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What would you like to change? Keep it short and concrete.
+      placeholder: Add support for...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What problem would this solve, or what workflow would it improve?
+      placeholder: Today, when I...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed-solution
+    attributes:
+      label: Proposed solution
+      description: Describe the behavior you want.
+      placeholder: QueryHouse should...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Mention any workarounds or other approaches you have considered.
+    validations:
+      required: false
+
+  - type: dropdown
+    id: impact
+    attributes:
+      label: Impact
+      description: How important is this for your workflow?
+      options:
+        - Nice to have
+        - Important
+        - Blocking
+    validations:
+      required: false
+
+  - type: dropdown
+    id: affected-area
+    attributes:
+      label: Affected area
+      description: Which part of QueryHouse would this affect most?
+      options:
+        - Query editor
+        - Results view
+        - Connection or page detection
+        - Extension UI
+        - Documentation
+        - Other
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots, mockups, or examples
+      description: Add visuals, examples, or links that clarify the request.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add related issues, implementation notes, or constraints if useful.
+    validations:
+      required: false

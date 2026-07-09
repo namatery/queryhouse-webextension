@@ -1,0 +1,105 @@
+name: Bug report
+description: Report broken or unexpected QueryHouse behavior.
+title: "bug: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to report a bug. Do not include private credentials, tokens, or sensitive query data.
+
+  - type: textarea
+    id: summary
+    attributes:
+      label: Summary
+      description: What is broken? Keep it short and concrete.
+      placeholder: QueryHouse does not...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps-to-reproduce
+    attributes:
+      label: Steps to reproduce
+      description: List the smallest set of steps that reproduces the issue.
+      placeholder: |
+        1. Open...
+        2. Click...
+        3. See...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual-behavior
+    attributes:
+      label: Actual behavior
+      description: What happened instead?
+      placeholder: I expected..., but...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-behavior
+    attributes:
+      label: Expected behavior
+      description: What should happen?
+      placeholder: QueryHouse should...
+    validations:
+      required: true
+
+  - type: input
+    id: browser
+    attributes:
+      label: Browser
+      description: Browser name and version.
+      placeholder: Chrome 126, Firefox 127, Edge 126
+    validations:
+      required: true
+
+  - type: input
+    id: queryhouse-version
+    attributes:
+      label: QueryHouse version or commit
+      description: Version, extension build, or commit hash where you saw this bug.
+      placeholder: v0.1.0 or abc1234
+    validations:
+      required: false
+
+  - type: input
+    id: clickhouse-url
+    attributes:
+      label: ClickHouse page or URL
+      description: Page where the issue happened. Remove private hostnames, credentials, tokens, and query data.
+      placeholder: /play, /dashboard, ClickHouse Cloud console
+    validations:
+      required: false
+
+  - type: dropdown
+    id: theme
+    attributes:
+      label: Theme
+      description: Which theme was active?
+      options:
+        - Light
+        - Dark
+        - Both
+        - Not sure
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: Screenshots or recording
+      description: Add screenshots or a short recording if the issue is visual or interaction-related.
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional-context
+    attributes:
+      label: Additional context
+      description: Add logs, console errors, related issues, or implementation notes if useful.
+    validations:
+      required: false
