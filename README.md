@@ -19,7 +19,7 @@
 <p align="center">
   <a href="#features">Features</a> ·
   <a href="#install-locally">Install locally</a> ·
-  <a href="#test-in-chrome">Test in Chrome</a> ·
+  <a href="#build-and-test">Build and test</a> ·
   <a href="#development">Development</a> ·
   <a href="#contribute">Contribute</a>
 </p>
@@ -30,7 +30,7 @@ QueryHouse is a Chrome-compatible MV3 extension that improves textarea-based Cli
 
 ## Site Access
 
-QueryHouse does not run on a fixed list of domains. Open the extension popup on any `http` or `https` ClickHouse web interface and click **Enable on this site**. Chrome asks for access to that site, then QueryHouse stores the origin and injects only on enabled sites.
+QueryHouse does not run on a fixed list of domains. Open the extension popup on any `http` or `https` ClickHouse web interface and click **Enable on this site**. The browser asks for access to that site, then QueryHouse stores the origin and injects only on enabled sites.
 
 ## Features
 
@@ -50,17 +50,37 @@ Clone the project and install dependencies:
 npm install
 ```
 
+## Build And Test
+
+<details>
+<summary>Chrome MV3</summary>
+
 Build the unpacked Chrome extension:
 
 ```bash
-npm run build
+npm run build:chrome
 ```
 
-The build output is generated at:
+The Chrome build output is generated at:
 
 ```text
 .output/chrome-mv3
 ```
+
+Test in Chrome:
+
+1. Open `chrome://extensions`.
+2. Enable Developer mode.
+3. Click Load unpacked.
+4. Select `.output/chrome-mv3`.
+5. Open a ClickHouse web interface.
+6. Open the QueryHouse popup and click Enable on this site.
+7. After rebuilding, click the extension reload button in `chrome://extensions` and refresh the ClickHouse page.
+
+</details>
+
+<details>
+<summary>Firefox MV3</summary>
 
 Build the unpacked Firefox extension:
 
@@ -74,21 +94,35 @@ The Firefox MV3 build output is generated at:
 .output/firefox-mv3
 ```
 
+Test in Firefox:
+
+1. Open `about:debugging#/runtime/this-firefox`.
+2. Click Load Temporary Add-on.
+3. Select `.output/firefox-mv3/manifest.json`.
+4. Open a ClickHouse web interface.
+5. Open the QueryHouse popup and click Enable on this site.
+6. After rebuilding, reload the temporary extension in `about:debugging#/runtime/this-firefox` and refresh the ClickHouse page.
+
+</details>
+
+<details>
+<summary>Firefox MV2 compatibility</summary>
+
 Firefox MV2 is also available for local compatibility testing:
 
 ```bash
 npm run build:firefox:mv2
 ```
 
-## Test In Chrome
+The Firefox MV2 build output is generated at:
 
-1. Open `chrome://extensions`.
-2. Enable Developer mode.
-3. Click Load unpacked.
-4. Select `.output/chrome-mv3`.
-5. Open a ClickHouse web interface.
-6. Open the QueryHouse popup and click Enable on this site.
-7. After rebuilding, click the extension reload button in `chrome://extensions` and refresh the ClickHouse page.
+```text
+.output/firefox-mv2
+```
+
+Load `.output/firefox-mv2/manifest.json` from `about:debugging#/runtime/this-firefox` when testing MV2 behavior.
+
+</details>
 
 ## Development
 
@@ -101,7 +135,7 @@ npm run dev
 Build the Chrome MV3 extension:
 
 ```bash
-npm run build
+npm run build:chrome
 ```
 
 Build the Firefox MV3 extension:
@@ -116,7 +150,7 @@ Run the full validation set before committing:
 npm test
 npm run typecheck
 npm run lint
-npm run build
+npm run build:chrome
 npm run build:firefox
 ```
 
@@ -127,5 +161,5 @@ Contributions are welcome. Please keep changes focused and run the validation co
 - Fork the repository and create a branch for your change.
 - Install dependencies with `npm install`.
 - Make your changes with matching tests where behavior changes.
-- Run `npm test`, `npm run typecheck`, `npm run lint`, and `npm run build`.
+- Run `npm test`, `npm run typecheck`, `npm run lint`, `npm run build:chrome`, and `npm run build:firefox`.
 - Open a pull request with a short summary and any testing notes.
