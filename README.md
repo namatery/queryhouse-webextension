@@ -18,7 +18,7 @@
 
 <p align="center">
   <a href="#features">Features</a> ·
-  <a href="#install-locally">Install locally</a> ·
+  <a href="#install-a-release">Install a release</a> ·
   <a href="#build-and-test">Build and test</a> ·
   <a href="#development">Development</a> ·
   <a href="#contribute">Contribute</a>
@@ -42,9 +42,24 @@ QueryHouse does not run on a fixed list of domains. Open the extension popup on 
 - 🩺 **Local diagnostics** - Catches obvious mistakes such as dangling commas, unclosed strings, unmatched brackets, duplicated semicolons, missing trailing semicolons, and invalid `FINAL AS alias` ordering.
 - ✅ **Parser validation** - Runs parser-based validation with `@clickhouse/parser`.
 
-## Install Locally
+## Install A Release
 
-Clone the project and install dependencies:
+QueryHouse is currently distributed through GitHub releases rather than a browser extension store.
+
+1. Download the Chrome ZIP from the [latest GitHub release](https://github.com/namatery/queryhouse-webextension/releases/latest).
+2. Extract the ZIP to a permanent directory.
+3. Open `chrome://extensions` in Chrome or another Chromium-based browser.
+4. Enable **Developer mode**.
+5. Click **Load unpacked** and select the extracted directory.
+6. Open a ClickHouse web interface, open the QueryHouse popup, and click **Enable on this site**.
+
+Keep the extracted directory in place while QueryHouse is installed. To update, download and extract the newer release, then reload the extension from `chrome://extensions`.
+
+Firefox builds are currently intended for temporary development testing through `about:debugging`, not permanent end-user installation.
+
+## Build Locally
+
+Clone the repository and install dependencies:
 
 ```bash
 npm install
@@ -144,10 +159,11 @@ Build the Firefox MV3 extension:
 npm run build:firefox
 ```
 
-Build the Firefox MV3 extension:
+Create release ZIPs:
 
 ```bash
-npm run build:firefox
+npm run zip:chrome
+npm run zip:firefox
 ```
 
 Run the full validation set before committing:

@@ -9,6 +9,8 @@
     "build:chrome": "wxt build --browser chrome --mv3",
     "build:firefox": "wxt build --browser firefox --mv3",
     "build:firefox:mv2": "wxt build --browser firefox --mv2",
+    "zip:chrome": "wxt zip --browser chrome --mv3",
+    "zip:firefox": "wxt zip --browser firefox --mv3",
     "typecheck": "wxt prepare && tsc --noEmit",
     "test": "wxt prepare && vitest run",
     "lint": "eslint ."
